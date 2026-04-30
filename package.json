@@ -2,6 +2,10 @@
   "name": "picpress-media",
   "version": "1.0.0",
   "description": "PicPress Media — Image & Video Desktop App",
+  "author": {
+    "name": "kk",
+    "email": "1990836114@qq.com"
+  },
   "main": "dist-electron/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",

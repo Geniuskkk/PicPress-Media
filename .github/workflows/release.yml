@@ -37,7 +37,7 @@ jobs:
           CGO_ENABLED: '1'
 
       - name: Build Electron (macOS)
-        run: npm run dist:mac
+        run: npm run build && npx electron-builder --mac dmg zip --publish never
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -61,6 +61,7 @@ jobs:
 
       # Install MinGW64 + libvips via MSYS2 (does NOT change default shell)
       - uses: msys2/setup-msys2@v2
+        id: msys2
         with:
           msystem: MINGW64
           update: true
@@ -81,21 +82,29 @@ jobs:
         shell: pwsh
         run: npm install --legacy-peer-deps
 
+      - name: Add MSYS2 mingw64 to PATH
+        shell: pwsh
+        run: |
+          "${{ steps.msys2.outputs.msys2-location }}\mingw64\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
       - name: Build Go sidecar (CGO + libvips via MSYS2)
         shell: pwsh
         run: |
-          $env:CGO_ENABLED   = "1"
-          $env:PKG_CONFIG_PATH = "C:\msys64\mingw64\lib\pkgconfig"
-          $env:CGO_CFLAGS    = "-IC:\msys64\mingw64\include"
-          $env:CGO_LDFLAGS   = "-LC:\msys64\mingw64\lib"
-          $env:CC            = "C:\msys64\mingw64\bin\gcc.exe"
-          $env:CXX           = "C:\msys64\mingw64\bin\g++.exe"
+          $msys2 = "${{ steps.msys2.outputs.msys2-location }}"
+          $env:CGO_ENABLED     = "1"
+          $env:PKG_CONFIG_PATH = "$msys2\mingw64\lib\pkgconfig"
+          $env:CGO_CFLAGS      = "-I$msys2\mingw64\include"
+          $env:CGO_LDFLAGS     = "-L$msys2\mingw64\lib"
+          $env:CC              = "gcc"
+          $env:CXX             = "g++"
+          where.exe gcc
+          where.exe pkg-config
           New-Item -ItemType Directory -Force -Path build\bin | Out-Null
           go build -o build\bin\picpress.exe .
 
       - name: Build Electron (Windows)
         shell: pwsh
-        run: npm run dist:win
+        run: npm run build && npx electron-builder --win nsis --publish never
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -144,7 +153,7 @@ jobs:
           CGO_ENABLED: '1'
 
       - name: Build Electron (Linux)
-        run: npm run dist:linux
+        run: npm run build && npx electron-builder --linux AppImage deb --publish never
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

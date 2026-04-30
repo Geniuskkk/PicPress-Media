@@ -1,0 +1,51 @@
+# ===== Node / Electron =====
+node_modules/
+npm-debug.log*
+yarn-error.log
+.pnpm-debug.log
+
+# ===== Build outputs =====
+dist/
+dist-electron/
+build/bin/
+out/
+
+# ===== Go =====
+*.exe
+*.test
+*.out
+vendor/
+
+# ===== macOS =====
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+.Spotlight-V100
+.Trashes
+
+# ===== Windows =====
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# ===== Linux =====
+*~
+
+# ===== IDE =====
+.vscode/settings.json
+.vscode/launch.json
+.idea/
+*.swp
+*.swo
+
+# ===== Electron builder cache =====
+.cache/
+buildResources/
+
+# ===== Temp / logs =====
+*.log
+tmp/
+temp/

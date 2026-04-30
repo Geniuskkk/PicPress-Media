@@ -138,7 +138,7 @@ import { processImage } from '@/utils/api'
 import { formatSize } from '@/utils/format'
 import { findPhotoSizePreset, formatPhotoSizeLabel, getPhotoSizeRatio, photoSizePresets } from '@/utils/photoSizes'
 import chiziIcon from '@/assets/chizi.svg'
-import yaSuoIcon from '@/assets/yaSuo.svg'
+import yaSuoIcon from '@/assets/yasuo.svg'
 import shuaxinIcon from '@/assets/shuaxin_1.svg'
 import shuaxinIcon2 from '@/assets/shuaxin.svg'
 const store = useImageStore()

@@ -56,12 +56,10 @@ jobs:
   # ────────────────────────────────────────────────
   build-win:
     runs-on: windows-latest
-    defaults:
-      run:
-        shell: msys2 {0}
     steps:
       - uses: actions/checkout@v4
 
+      # Install MinGW64 + libvips via MSYS2 (does NOT change default shell)
       - uses: msys2/setup-msys2@v2
         with:
           msystem: MINGW64
@@ -80,17 +78,23 @@ jobs:
           node-version: '20'
 
       - name: Install Node dependencies
+        shell: pwsh
         run: npm install --legacy-peer-deps
 
-      - name: Build Go sidecar
-        run: npm run build:go
-        env:
-          CGO_ENABLED: '1'
-          PKG_CONFIG_PATH: /mingw64/lib/pkgconfig
-          CGO_CFLAGS: '-I/mingw64/include'
-          CGO_LDFLAGS: '-L/mingw64/lib'
+      - name: Build Go sidecar (CGO + libvips via MSYS2)
+        shell: pwsh
+        run: |
+          $env:CGO_ENABLED   = "1"
+          $env:PKG_CONFIG_PATH = "C:\msys64\mingw64\lib\pkgconfig"
+          $env:CGO_CFLAGS    = "-IC:\msys64\mingw64\include"
+          $env:CGO_LDFLAGS   = "-LC:\msys64\mingw64\lib"
+          $env:CC            = "C:\msys64\mingw64\bin\gcc.exe"
+          $env:CXX           = "C:\msys64\mingw64\bin\g++.exe"
+          New-Item -ItemType Directory -Force -Path build\bin | Out-Null
+          go build -o build\bin\picpress.exe .
 
       - name: Build Electron (Windows)
+        shell: pwsh
         run: npm run dist:win
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -118,8 +122,18 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install libvips
-        run: sudo apt-get update && sudo apt-get install -y libvips-dev
+      - name: Install libvips and electron-builder dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libvips-dev \
+            fakeroot \
+            dpkg \
+            rpm \
+            libarchive-tools \
+            libnss3-dev \
+            libatk-bridge2.0-0 \
+            libgtk-3-0
 
       - name: Install Node dependencies
         run: npm install --legacy-peer-deps

@@ -161,7 +161,7 @@ cd ImageCroppingAndCompression
 # 安装 Node 依赖
 npm install --legacy-peer-deps
 
-# 编译 Go sidecar（产物在 build/bin/picpress）
+# 编译 Go sidecar（产物在 sidecar-bin/picpress）
 npm run build:go
 
 # 开发模式启动（Electron + HMR）
@@ -323,7 +323,7 @@ git clone https://github.com/Geniuskkk/ImageCroppingAndCompression.git
 cd ImageCroppingAndCompression
 
 npm install --legacy-peer-deps
-npm run build:go   # compile Go sidecar → build/bin/picpress
+npm run build:go   # compile Go sidecar → sidecar-bin/picpress
 npm run dev        # launch Electron in development mode
 npm run dist       # package for the current platform
 ```

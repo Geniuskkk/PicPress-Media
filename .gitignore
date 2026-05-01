@@ -7,7 +7,7 @@ yarn-error.log
 # ===== Build outputs =====
 dist/
 dist-electron/
-build/bin/
+sidecar-bin/
 out/
 
 # ===== Go =====

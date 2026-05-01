@@ -31,8 +31,8 @@ function getBinaryPath(): string {
   if (app.isPackaged) {
     return join(process.resourcesPath, 'bin', name)
   }
-  // Dev: binary lives in <project-root>/build/bin/
-  return join(app.getAppPath(), 'build', 'bin', name)
+  // Dev: binary lives in <project-root>/sidecar-bin/
+  return join(app.getAppPath(), 'sidecar-bin', name)
 }
 
 /** Absolute path to the bundled ffmpeg binary */

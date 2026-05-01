@@ -27,9 +27,8 @@ const config: Configuration = {
   // Copy the pre-compiled Go binary into resources/bin/ (outside asar)
   extraResources: [
     {
-      from: 'build/bin/',
+      from: 'sidecar-bin/',
       to: 'bin/',
-      filter: ['picpress', 'picpress.exe'],
     },
   ],
 

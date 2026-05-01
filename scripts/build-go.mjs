@@ -6,8 +6,8 @@
 //   node scripts/build-go.mjs --arch arm64      # force arm64
 //   node scripts/build-go.mjs --arch x64        # force x64 (amd64)
 //
-// Output: build/bin/picpress  (macOS/Linux)
-//         build/bin/picpress.exe  (Windows)
+// Output: sidecar-bin/picpress  (macOS/Linux)
+//         sidecar-bin/picpress.exe  (Windows)
 
 import { execSync } from 'child_process'
 import { mkdirSync } from 'fs'
@@ -17,7 +17,7 @@ import { platform, argv } from 'process'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const projectRoot = join(__dirname, '..') // one level up from scripts/
-const outDir = join(projectRoot, 'build', 'bin')
+const outDir = join(projectRoot, 'sidecar-bin')
 
 mkdirSync(outDir, { recursive: true })
 

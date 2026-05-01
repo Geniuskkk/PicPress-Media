@@ -5,6 +5,18 @@ import { createServer } from 'net'
 import { existsSync, chmodSync } from 'fs'
 
 let sidecarProcess: ChildProcess | null = null
+let sidecarStartupError: Error | null = null
+let sidecarStderr = ''
+
+function rememberSidecarStderr(data: Buffer): void {
+  sidecarStderr = `${sidecarStderr}${data.toString()}`.slice(-4000)
+}
+
+function buildSidecarError(message: string): Error {
+  const stderr = sidecarStderr.trim()
+  if (!stderr) return new Error(message)
+  return new Error(`${message}\n\nLast sidecar stderr:\n${stderr}`)
+}
 
 /** Find a free TCP port on 127.0.0.1 */
 function getAvailablePort(): Promise<number> {
@@ -68,6 +80,8 @@ function getFfprobePath(): string {
 export async function startSidecar(): Promise<number> {
   const port = await getAvailablePort()
   const binaryPath = getBinaryPath()
+  sidecarStartupError = null
+  sidecarStderr = ''
 
   if (!existsSync(binaryPath)) {
     throw new Error(
@@ -101,10 +115,19 @@ export async function startSidecar(): Promise<number> {
     process.stdout.write(`[sidecar] ${data}`)
   })
   sidecarProcess.stderr?.on('data', (data: Buffer) => {
+    rememberSidecarStderr(data)
     process.stderr.write(`[sidecar] ${data}`)
+  })
+  sidecarProcess.on('error', (error) => {
+    sidecarStartupError = buildSidecarError(`Failed to start Go sidecar: ${error.message}`)
   })
   sidecarProcess.on('exit', (code, signal) => {
     console.log(`[sidecar] exited — code=${code} signal=${signal}`)
+    if (code !== 0 || signal !== null) {
+      sidecarStartupError = buildSidecarError(
+        `Go sidecar exited before becoming ready (code=${code} signal=${signal})`
+      )
+    }
     sidecarProcess = null
   })
 
@@ -117,6 +140,10 @@ export async function startSidecar(): Promise<number> {
 export async function waitForReady(port: number, timeoutMs = 15_000): Promise<void> {
   const deadline = Date.now() + timeoutMs
   while (Date.now() < deadline) {
+    if (sidecarStartupError) {
+      throw sidecarStartupError
+    }
+
     try {
       const res = await fetch(`http://127.0.0.1:${port}/api/health`)
       if (res.ok) return
@@ -125,7 +152,12 @@ export async function waitForReady(port: number, timeoutMs = 15_000): Promise<vo
     }
     await new Promise((r) => setTimeout(r, 300))
   }
-  throw new Error(`Go sidecar did not become ready within ${timeoutMs / 1000}s`)
+
+  if (sidecarStartupError) {
+    throw sidecarStartupError
+  }
+
+  throw buildSidecarError(`Go sidecar did not become ready within ${timeoutMs / 1000}s`)
 }
 
 /** Gracefully terminate the Go sidecar process. */

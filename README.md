@@ -151,6 +151,7 @@ Content-Type: multipart/form-data
 - Go 1.22+
 - Node.js 18+
 - libvips（macOS: `brew install vips`，Ubuntu: `apt install libvips-dev`）
+- macOS 打包额外需要 `dylibbundler`（`brew install dylibbundler`）
 
 > ffmpeg 由 `ffmpeg-static` npm 包在开发时自动提供，打包时内置进安装包，无需手动安装。
 
@@ -179,7 +180,7 @@ npm run dist:win    # Windows NSIS
 npm run dist:linux  # AppImage + deb
 ```
 
-> 注意：macOS 和 Windows 安装包必须分别在对应系统上构建（CGO 依赖 libvips 不支持交叉编译）。CI 构建请使用 GitHub Actions 多平台矩阵。
+> 注意：macOS 和 Windows 安装包必须分别在对应系统上构建（CGO 依赖 libvips 不支持交叉编译）。macOS 发布包还需要 `dylibbundler` 把 libvips 的动态库依赖一起打进 app。CI 构建请使用 GitHub Actions 多平台矩阵。
 
 ### 参与贡献
 
@@ -315,6 +316,7 @@ Content-Type: multipart/form-data
 - Go 1.22+
 - Node.js 18+
 - libvips (macOS: `brew install vips`, Ubuntu: `apt install libvips-dev`)
+- `dylibbundler` for macOS packaging (`brew install dylibbundler`)
 
 > ffmpeg is provided automatically via `ffmpeg-static` in development and bundled into the installer for production.
 
@@ -336,7 +338,7 @@ npm run dist:win    # Windows NSIS
 npm run dist:linux  # AppImage + deb
 ```
 
-> macOS and Windows packages must be built on their respective OS due to CGO (libvips). Use GitHub Actions matrix builds for CI.
+> macOS and Windows packages must be built on their respective OS due to CGO (libvips). macOS release builds also need `dylibbundler` to bundle libvips dylibs into the app. Use GitHub Actions matrix builds for CI.
 
 ### Contributing
 

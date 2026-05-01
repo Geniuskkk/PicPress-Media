@@ -13,12 +13,12 @@
     "build:go": "node scripts/build-go.mjs",
     "build:go:arm64": "node scripts/build-go.mjs --arch arm64",
     "build:go:x64": "node scripts/build-go.mjs --arch x64",
-    "dist": "npm run build:go && npm run build && electron-builder",
-    "dist:mac": "npm run build:go:arm64 && npm run build && electron-builder --mac",
-    "dist:mac:arm64": "npm run build:go:arm64 && npm run build && electron-builder --mac --arm64",
-    "dist:mac:x64": "npm run build:go:x64 && npm run build && electron-builder --mac --x64",
-    "dist:win": "npm run build:go && npm run build && electron-builder --win",
-    "dist:linux": "npm run build:go && npm run build && electron-builder --linux",
+    "dist": "npm run build:go && npm run build && electron-builder --config electron-builder.config.ts",
+    "dist:mac": "npm run build:go:arm64 && npm run build && electron-builder --config electron-builder.config.ts --mac",
+    "dist:mac:arm64": "npm run build:go:arm64 && npm run build && electron-builder --config electron-builder.config.ts --mac --arm64",
+    "dist:mac:x64": "npm run build:go:x64 && npm run build && electron-builder --config electron-builder.config.ts --mac --x64",
+    "dist:win": "npm run build:go && npm run build && electron-builder --config electron-builder.config.ts --win",
+    "dist:linux": "npm run build:go && npm run build && electron-builder --config electron-builder.config.ts --linux",
     "postinstall": "electron-builder install-app-deps"
   },
   "dependencies": {

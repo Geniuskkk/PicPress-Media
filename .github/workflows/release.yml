@@ -10,20 +10,12 @@ permissions:
 
 jobs:
   # ────────────────────────────────────────────────
-  # macOS — matrix: arm64 on macos-14, x64 on macos-13
-  # CGO + libvips cross-compilation is unreliable, so we use
-  # native runners for each arch. The beforeBuild hook in
-  # electron-builder.config.ts auto-compiles the Go sidecar.
+  # macOS — arm64 only (macos-14, Apple Silicon)
+  # macos-13 (Intel) runners are retired by GitHub.
+  # Intel Mac users can run the arm64 build via Rosetta 2.
   # ────────────────────────────────────────────────
   build-mac:
-    strategy:
-      matrix:
-        include:
-          - runner: macos-14    # Apple Silicon (arm64)
-            eb_arch: --arm64
-          - runner: macos-13    # Intel (x64)
-            eb_arch: --x64
-    runs-on: ${{ matrix.runner }}
+    runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
 
@@ -41,9 +33,9 @@ jobs:
       - name: Install Node dependencies
         run: npm install --legacy-peer-deps
 
-      # beforeBuild hook compiles Go sidecar for the correct arch automatically.
-      - name: Build Electron (macOS)
-        run: npm run build && npx electron-builder --mac dmg zip ${{ matrix.eb_arch }} --publish never
+      # beforeBuild hook compiles Go sidecar for arm64 automatically.
+      - name: Build Electron (macOS arm64)
+        run: npm run build && npx electron-builder --mac dmg zip --arm64 --publish never
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
           CGO_ENABLED: '1'
@@ -51,7 +43,7 @@ jobs:
       - name: Upload macOS artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: mac-dist-${{ matrix.runner }}
+          name: mac-dist
           path: |
             dist/*.dmg
             dist/*.zip

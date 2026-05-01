@@ -73,8 +73,8 @@ const config: Configuration = {
   mac: {
     category: 'public.app-category.graphics-design',
     target: [
-      { target: 'dmg', arch: ['x64', 'arm64'] },
-      { target: 'zip', arch: ['x64', 'arm64'] },
+      { target: 'dmg', arch: ['arm64'] },
+      { target: 'zip', arch: ['arm64'] },
     ],
     // hardenedRuntime is required for macOS notarization
     hardenedRuntime: true,

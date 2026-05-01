@@ -43,11 +43,11 @@ PicPress Media 是一款开源的跨平台桌面应用，基于 **Electron + Vue
 
 ### 下载 / Download
 
-前往 [Releases](https://github.com/Geniuskkk/ImageCroppingAndCompression/releases/latest) 页面下载对应平台安装包：
+前往 [Releases](https://github.com/Geniuskkk/PicPress-Media/releases/latest) 页面下载对应平台安装包：
 
 | 平台 | 安装包格式 |
 |------|-----------|
-| macOS (Apple Silicon / Intel) | `.dmg` |
+| macOS (Apple Silicon，Intel 可通过 Rosetta 2 运行) | `.dmg` / `.zip` |
 | Windows | `.exe`（NSIS 安装向导）|
 | Linux | `.AppImage` / `.deb` |
 
@@ -157,7 +157,7 @@ Content-Type: multipart/form-data
 
 ```bash
 git clone https://github.com/Geniuskkk/ImageCroppingAndCompression.git
-cd ImageCroppingAndCompression
+cd PicPress-Media
 
 # 安装 Node 依赖
 npm install --legacy-peer-deps
@@ -180,7 +180,7 @@ npm run dist:win    # Windows NSIS
 npm run dist:linux  # AppImage + deb
 ```
 
-> 注意：macOS 和 Windows 安装包必须分别在对应系统上构建（CGO 依赖 libvips 不支持交叉编译）。macOS 发布包还需要 `dylibbundler` 把 libvips 的动态库依赖一起打进 app。CI 构建请使用 GitHub Actions 多平台矩阵。
+> 注意：macOS 和 Windows 安装包必须分别在对应系统上构建（CGO 依赖 libvips 不支持交叉编译）。当前 CI 发布的 macOS 安装包为 Apple Silicon arm64 构建，Intel Mac 可通过 Rosetta 2 运行。macOS 发布包还需要 `dylibbundler` 把 libvips 的动态库依赖一起打进 app。CI 构建使用 GitHub Actions 的多平台独立 jobs。
 
 ### 参与贡献
 
@@ -215,11 +215,11 @@ PicPress Media is an open-source cross-platform desktop application built with *
 
 ### Download
 
-Get the latest build from [Releases](https://github.com/Geniuskkk/ImageCroppingAndCompression/releases/latest):
+Get the latest build from [Releases](https://github.com/Geniuskkk/PicPress-Media/releases/latest):
 
 | Platform | Format |
 |----------|--------|
-| macOS (Apple Silicon / Intel) | `.dmg` |
+| macOS (Apple Silicon, Intel via Rosetta 2) | `.dmg` / `.zip` |
 | Windows | `.exe` (NSIS installer) |
 | Linux | `.AppImage` / `.deb` |
 
@@ -322,7 +322,7 @@ Content-Type: multipart/form-data
 
 ```bash
 git clone https://github.com/Geniuskkk/ImageCroppingAndCompression.git
-cd ImageCroppingAndCompression
+cd PicPress-Media
 
 npm install --legacy-peer-deps
 npm run build:go   # compile Go sidecar → sidecar-bin/picpress
@@ -338,7 +338,7 @@ npm run dist:win    # Windows NSIS
 npm run dist:linux  # AppImage + deb
 ```
 
-> macOS and Windows packages must be built on their respective OS due to CGO (libvips). macOS release builds also need `dylibbundler` to bundle libvips dylibs into the app. Use GitHub Actions matrix builds for CI.
+> macOS and Windows packages must be built on their respective OS due to CGO (libvips). The current CI release publishes an Apple Silicon arm64 macOS build, and Intel Macs can run it through Rosetta 2. macOS release builds also need `dylibbundler` to bundle libvips dylibs into the app. CI uses GitHub Actions with separate jobs per platform.
 
 ### Contributing
 

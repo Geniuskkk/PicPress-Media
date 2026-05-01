@@ -1,4 +1,7 @@
 import type { Configuration } from 'electron-builder'
+import { execSync } from 'child_process'
+import { mkdirSync } from 'fs'
+import { join } from 'path'
 
 const config: Configuration = {
   appId: 'com.picpress.media',
@@ -32,6 +35,39 @@ const config: Configuration = {
       filter: ['picpress', 'picpress.exe'],
     },
   ],
+
+  // Auto-compile the Go sidecar for the target arch before each platform/arch pack.
+  // This runs once per arch (e.g. arm64 then x64) when building a multi-arch release.
+  beforeBuild: async ({ arch, platform }) => {
+    const goArchMap: Record<string, string> = {
+      x64: 'amd64',
+      arm64: 'arm64',
+      ia32: '386',
+      armv7l: 'arm',
+    }
+    const goos =
+      platform.name === 'mac'
+        ? 'darwin'
+        : platform.name === 'win'
+          ? 'windows'
+          : 'linux'
+    const goArch = goArchMap[arch] ?? arch
+    const ext = goos === 'windows' ? '.exe' : ''
+    const outDir = join(process.cwd(), 'build', 'bin')
+    mkdirSync(outDir, { recursive: true })
+
+    console.log(`\nBuilding Go sidecar (${goos}/${goArch}) → build/bin/picpress${ext}`)
+    execSync(`go build -o ${join(outDir, `picpress${ext}`)} .`, {
+      cwd: process.cwd(),
+      stdio: 'inherit',
+      env: {
+        ...process.env,
+        GOARCH: goArch,
+        GOOS: goos,
+        CGO_ENABLED: '1',
+      },
+    })
+  },
 
   // ── macOS ─────────────────────────────────────────────────────────────────
   mac: {

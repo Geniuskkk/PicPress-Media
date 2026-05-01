@@ -10,16 +10,26 @@ permissions:
 
 jobs:
   # ────────────────────────────────────────────────
-  # macOS
+  # macOS — matrix: arm64 on macos-14, x64 on macos-13
+  # CGO + libvips cross-compilation is unreliable, so we use
+  # native runners for each arch. The beforeBuild hook in
+  # electron-builder.config.ts auto-compiles the Go sidecar.
   # ────────────────────────────────────────────────
   build-mac:
-    runs-on: macos-latest
+    strategy:
+      matrix:
+        include:
+          - runner: macos-14    # Apple Silicon (arm64)
+            eb_arch: --arm64
+          - runner: macos-13    # Intel (x64)
+            eb_arch: --x64
+    runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
+          go-version-file: 'go.mod'
 
       - uses: actions/setup-node@v4
         with:
@@ -31,21 +41,17 @@ jobs:
       - name: Install Node dependencies
         run: npm install --legacy-peer-deps
 
-      - name: Build Go sidecar
-        run: npm run build:go
-        env:
-          CGO_ENABLED: '1'
-
+      # beforeBuild hook compiles Go sidecar for the correct arch automatically.
       - name: Build Electron (macOS)
-        run: npm run build && npx electron-builder --mac dmg zip --publish never
+        run: npm run build && npx electron-builder --mac dmg zip ${{ matrix.eb_arch }} --publish never
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CGO_ENABLED: '1'
 
       - name: Upload macOS artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: mac-dist
+          name: mac-dist-${{ matrix.runner }}
           path: |
             dist/*.dmg
             dist/*.zip
@@ -59,7 +65,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Install MinGW64 + libvips via MSYS2 (does NOT change default shell)
+      # Install MinGW64 + libvips via MSYS2
       - uses: msys2/setup-msys2@v2
         id: msys2
         with:
@@ -72,41 +78,32 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
+          go-version-file: 'go.mod'
 
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-
-      - name: Install Node dependencies
-        shell: pwsh
-        run: npm install --legacy-peer-deps
 
       - name: Add MSYS2 mingw64 to PATH
         shell: pwsh
         run: |
           "${{ steps.msys2.outputs.msys2-location }}\mingw64\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
-      - name: Build Go sidecar (CGO + libvips via MSYS2)
+      - name: Install Node dependencies
         shell: pwsh
-        run: |
-          $msys2 = "${{ steps.msys2.outputs.msys2-location }}"
-          $env:CGO_ENABLED     = "1"
-          $env:PKG_CONFIG_PATH = "$msys2\mingw64\lib\pkgconfig"
-          $env:CGO_CFLAGS      = "-I$msys2\mingw64\include"
-          $env:CGO_LDFLAGS     = "-L$msys2\mingw64\lib"
-          $env:CC              = "gcc"
-          $env:CXX             = "g++"
-          where.exe gcc
-          where.exe pkg-config
-          New-Item -ItemType Directory -Force -Path build\bin | Out-Null
-          go build -o build\bin\picpress.exe .
+        run: npm install --legacy-peer-deps
 
+      # CGO env vars are forwarded into the beforeBuild hook via process.env inheritance.
       - name: Build Electron (Windows)
         shell: pwsh
         run: npm run build && npx electron-builder --win nsis --publish never
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CGO_ENABLED: '1'
+          PKG_CONFIG_PATH: '${{ steps.msys2.outputs.msys2-location }}\mingw64\lib\pkgconfig'
+          CGO_CFLAGS: '-I${{ steps.msys2.outputs.msys2-location }}\mingw64\include'
+          CGO_LDFLAGS: '-L${{ steps.msys2.outputs.msys2-location }}\mingw64\lib'
+          CC: 'gcc'
+          CXX: 'g++'
 
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
@@ -125,7 +122,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
+          go-version-file: 'go.mod'
 
       - uses: actions/setup-node@v4
         with:
@@ -147,15 +144,11 @@ jobs:
       - name: Install Node dependencies
         run: npm install --legacy-peer-deps
 
-      - name: Build Go sidecar
-        run: npm run build:go
-        env:
-          CGO_ENABLED: '1'
-
+      # beforeBuild hook compiles Go sidecar automatically.
       - name: Build Electron (Linux)
         run: npm run build && npx electron-builder --linux AppImage deb --publish never
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CGO_ENABLED: '1'
 
       - name: Upload Linux artifacts
         uses: actions/upload-artifact@v4

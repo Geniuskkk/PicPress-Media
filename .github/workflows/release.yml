@@ -33,7 +33,11 @@ jobs:
       - name: Install Node dependencies
         run: npm install --legacy-peer-deps
 
-      # beforeBuild hook compiles Go sidecar for arm64 automatically.
+      - name: Build Go sidecar (arm64)
+        run: npm run build:go:arm64
+        env:
+          CGO_ENABLED: '1'
+
       - name: Build Electron (macOS arm64)
         run: npm run build && npx electron-builder --mac dmg zip --arm64 --publish never
         env:
@@ -84,6 +88,19 @@ jobs:
       - name: Install Node dependencies
         shell: pwsh
         run: npm install --legacy-peer-deps
+
+      - name: Build Go sidecar (Windows)
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path build\bin | Out-Null
+          go build -o build\bin\picpress.exe .
+        env:
+          CGO_ENABLED: '1'
+          PKG_CONFIG_PATH: '${{ steps.msys2.outputs.msys2-location }}\mingw64\lib\pkgconfig'
+          CGO_CFLAGS: '-I${{ steps.msys2.outputs.msys2-location }}\mingw64\include'
+          CGO_LDFLAGS: '-L${{ steps.msys2.outputs.msys2-location }}\mingw64\lib'
+          CC: 'gcc'
+          CXX: 'g++'
 
       # CGO env vars are forwarded into the beforeBuild hook via process.env inheritance.
       - name: Build Electron (Windows)
@@ -136,7 +153,11 @@ jobs:
       - name: Install Node dependencies
         run: npm install --legacy-peer-deps
 
-      # beforeBuild hook compiles Go sidecar automatically.
+      - name: Build Go sidecar
+        run: npm run build:go
+        env:
+          CGO_ENABLED: '1'
+
       - name: Build Electron (Linux)
         run: npm run build && npx electron-builder --linux AppImage deb --publish never
         env:

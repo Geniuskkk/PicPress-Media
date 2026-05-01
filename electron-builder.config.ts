@@ -32,6 +32,8 @@ const config: Configuration = {
     },
   ],
 
+  afterPack: './scripts/verify-sidecar.mjs',
+
   // ── macOS ─────────────────────────────────────────────────────────────────
   mac: {
     category: 'public.app-category.graphics-design',

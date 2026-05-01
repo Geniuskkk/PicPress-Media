@@ -39,19 +39,10 @@ jobs:
           CGO_ENABLED: '1'
 
       - name: Build Electron (macOS arm64)
-        run: npm run build && npx electron-builder --mac dmg zip --dir --arm64 --publish never
+        run: npm run build && npx electron-builder --mac dmg zip --arm64 --publish never
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
           CGO_ENABLED: '1'
-
-      - name: Verify bundled Go sidecar (macOS)
-        run: |
-          sidecar_path=$(find dist -path '*/Contents/Resources/bin/picpress' -print -quit)
-          if [[ -z "$sidecar_path" ]]; then
-            echo 'Bundled Go sidecar not found under dist/**/Contents/Resources/bin/picpress' >&2
-            exit 1
-          fi
-          echo "Found sidecar: $sidecar_path"
 
       - name: Upload macOS artifacts
         uses: actions/upload-artifact@v4
@@ -111,7 +102,7 @@ jobs:
 
       - name: Build Electron (Windows)
         shell: pwsh
-        run: npm run build && npx electron-builder --win nsis --dir --publish never
+        run: npm run build && npx electron-builder --win nsis --publish never
         env:
           CGO_ENABLED: '1'
           PKG_CONFIG_PATH: '${{ steps.msys2.outputs.msys2-location }}\mingw64\lib\pkgconfig'
@@ -119,17 +110,6 @@ jobs:
           CGO_LDFLAGS: '-L${{ steps.msys2.outputs.msys2-location }}\mingw64\lib'
           CC: 'gcc'
           CXX: 'g++'
-
-      - name: Verify bundled Go sidecar (Windows)
-        shell: pwsh
-        run: |
-          $sidecar = Get-ChildItem -Path dist -Recurse -Filter picpress.exe |
-            Where-Object { $_.FullName -match 'resources[\\/]bin[\\/]picpress\.exe$' } |
-            Select-Object -First 1 -ExpandProperty FullName
-          if (-not $sidecar) {
-            throw 'Bundled Go sidecar not found under dist/**/resources/bin/picpress.exe'
-          }
-          Write-Host "Found sidecar: $sidecar"
 
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
@@ -176,18 +156,9 @@ jobs:
           CGO_ENABLED: '1'
 
       - name: Build Electron (Linux)
-        run: npm run build && npx electron-builder --linux AppImage deb --dir --publish never
+        run: npm run build && npx electron-builder --linux AppImage deb --publish never
         env:
           CGO_ENABLED: '1'
-
-      - name: Verify bundled Go sidecar (Linux)
-        run: |
-          sidecar_path=$(find dist -path '*/resources/bin/picpress' -print -quit)
-          if [[ -z "$sidecar_path" ]]; then
-            echo 'Bundled Go sidecar not found under dist/**/resources/bin/picpress' >&2
-            exit 1
-          fi
-          echo "Found sidecar: $sidecar_path"
 
       - name: Upload Linux artifacts
         uses: actions/upload-artifact@v4

@@ -39,7 +39,7 @@ jobs:
           CGO_ENABLED: '1'
 
       - name: Build Electron (macOS arm64)
-        run: npm run build && npx electron-builder --mac dmg zip --arm64 --publish never
+        run: npm run build && npx electron-builder --mac dmg zip --dir --arm64 --publish never
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
           CGO_ENABLED: '1'
@@ -111,7 +111,7 @@ jobs:
 
       - name: Build Electron (Windows)
         shell: pwsh
-        run: npm run build && npx electron-builder --win nsis --publish never
+        run: npm run build && npx electron-builder --win nsis --dir --publish never
         env:
           CGO_ENABLED: '1'
           PKG_CONFIG_PATH: '${{ steps.msys2.outputs.msys2-location }}\mingw64\lib\pkgconfig'
@@ -176,7 +176,7 @@ jobs:
           CGO_ENABLED: '1'
 
       - name: Build Electron (Linux)
-        run: npm run build && npx electron-builder --linux AppImage deb --publish never
+        run: npm run build && npx electron-builder --linux AppImage deb --dir --publish never
         env:
           CGO_ENABLED: '1'
 

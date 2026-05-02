@@ -117,13 +117,21 @@ export async function startSidecar(): Promise<number> {
   const ffmpegPath = getFfmpegPath()
   const ffprobePath = getFfprobePath()
 
+  // On Windows (packaged), the bundled MinGW64 DLLs live alongside picpress.exe
+  // in resources/bin/. Add that directory to PATH so Windows DLL loader finds them.
+  const spawnEnv: Record<string, string | undefined> = {
+    ...process.env,
+    PORT: String(port),
+    FFMPEG_PATH: ffmpegPath,
+    FFPROBE_PATH: ffprobePath,
+  }
+  if (process.platform === 'win32' && app.isPackaged) {
+    const binDir = join(process.resourcesPath, 'bin')
+    spawnEnv.PATH = `${binDir};${process.env.PATH ?? ''}`
+  }
+
   sidecarProcess = spawn(binaryPath, [], {
-    env: {
-      ...process.env,
-      PORT: String(port),
-      FFMPEG_PATH: ffmpegPath,
-      FFPROBE_PATH: ffprobePath,
-    },
+    env: spawnEnv,
     stdio: ['ignore', 'pipe', 'pipe'],
   })
 

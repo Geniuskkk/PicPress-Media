@@ -165,6 +165,16 @@ jobs:
           CC: 'gcc'
           CXX: 'g++'
 
+      - name: Bundle MinGW64 DLLs into sidecar-bin (Windows)
+        shell: msys2 {0}
+        run: |
+          # ldd lists all transitive DLL dependencies.
+          # Copy only DLLs from the MinGW64 bin directory (skip Windows system DLLs).
+          ldd sidecar-bin/picpress.exe \
+            | grep '/mingw64/bin/' \
+            | awk '{print $3}' \
+            | xargs -I{} cp -v {} sidecar-bin/
+
       - name: Build Electron (Windows)
         shell: pwsh
         run: npm run build && npx electron-builder --config electron-builder.config.ts --win nsis --publish never

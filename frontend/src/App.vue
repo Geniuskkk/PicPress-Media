@@ -1,17 +1,18 @@
 <template>
-  <div :class="{ dark: isDark }" class="h-full">
-    <div class="min-h-full bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors">
+  <div :class="{ dark: isDark }" class="h-full overflow-hidden">
+    <div class="h-full flex flex-col bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors">
       <!-- On macOS the traffic-light buttons (close/minimise/fullscreen) float over
            the window at x≈16 and span ~74 px. Add left padding so they don't overlap. -->
       <nav
-        class="border-b border-gray-200 dark:border-gray-700 py-3 flex items-center justify-between"
+        class="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 py-3 flex items-center justify-between"
         :class="isMacOS ? 'pl-24 pr-4' : 'px-4'"
+        style="-webkit-app-region: drag; user-select: none;"
       >
-        <RouterLink to="/" class="flex items-center gap-2 font-bold text-lg text-blue-600 dark:text-blue-400">
+        <RouterLink to="/" style="-webkit-app-region: no-drag" class="flex items-center gap-2 font-bold text-lg text-blue-600 dark:text-blue-400">
           <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
           PicPress Media
         </RouterLink>
-        <div class="flex items-center gap-3">
+        <div class="flex items-center gap-3" style="-webkit-app-region: no-drag">
           <RouterLink to="/" class="text-sm text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400">单图处理</RouterLink>
           <RouterLink to="/batch" class="text-sm text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400">批量处理</RouterLink>
           <RouterLink to="/video" class="text-sm text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400">视频压缩</RouterLink>
@@ -21,7 +22,9 @@
           </button>
         </div>
       </nav>
-      <RouterView />
+      <div class="flex-1 overflow-y-auto">
+        <RouterView />
+      </div>
     </div>
   </div>
 </template>

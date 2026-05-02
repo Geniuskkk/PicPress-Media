@@ -12,7 +12,7 @@ jobs:
   # ────────────────────────────────────────────────
   # macOS — arm64 only (macos-14, Apple Silicon)
   # macos-13 (Intel) runners are retired by GitHub.
-  # Intel Mac users can run the arm64 build via Rosetta 2.
+  # Intel Mac users need a separate x64 build; Rosetta only runs x64 apps on Apple Silicon.
   # ────────────────────────────────────────────────
   build-mac:
     runs-on: macos-14
@@ -43,6 +43,71 @@ jobs:
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
           CGO_ENABLED: '1'
+
+      - name: Smoke test packaged macOS sidecar
+        run: |
+          APP="dist/mac-arm64/PicPress Media.app"
+          SIDECAR="$APP/Contents/Resources/bin/picpress"
+          FFMPEG="$APP/Contents/Resources/app.asar.unpacked/node_modules/ffmpeg-static/ffmpeg"
+          FFPROBE="$APP/Contents/Resources/app.asar.unpacked/node_modules/ffprobe-static/bin/darwin/arm64/ffprobe"
+
+          test -x "$SIDECAR"
+          test -x "$FFMPEG"
+          test -x "$FFPROBE"
+          codesign --verify --verbose=4 "$SIDECAR"
+          find "$APP/Contents/Resources/bin" -type f -name "*.dylib" -exec codesign --verify --verbose=4 {} \;
+
+          node - <<'NODE'
+          const { spawn } = require('node:child_process')
+
+          const app = 'dist/mac-arm64/PicPress Media.app'
+          const sidecar = `${app}/Contents/Resources/bin/picpress`
+          const child = spawn(sidecar, [], {
+            env: {
+              ...process.env,
+              PORT: '54321',
+              FFMPEG_PATH: `${app}/Contents/Resources/app.asar.unpacked/node_modules/ffmpeg-static/ffmpeg`,
+              FFPROBE_PATH: `${app}/Contents/Resources/app.asar.unpacked/node_modules/ffprobe-static/bin/darwin/arm64/ffprobe`,
+            },
+            stdio: ['ignore', 'pipe', 'pipe'],
+          })
+
+          let stderr = ''
+          child.stdout.on('data', (data) => process.stdout.write(`[sidecar] ${data}`))
+          child.stderr.on('data', (data) => {
+            stderr += data.toString()
+            process.stderr.write(`[sidecar] ${data}`)
+          })
+
+          const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+
+          ;(async () => {
+            try {
+              for (let i = 0; i < 30; i += 1) {
+                if (child.exitCode !== null) {
+                  throw new Error(`sidecar exited early with code ${child.exitCode}\n${stderr}`)
+                }
+
+                try {
+                  const res = await fetch('http://127.0.0.1:54321/api/health')
+                  if (res.ok) {
+                    child.kill('SIGTERM')
+                    return
+                  }
+                } catch {
+                  await wait(500)
+                }
+              }
+
+              throw new Error(`sidecar health check timed out\n${stderr}`)
+            } finally {
+              if (child.exitCode === null) child.kill('SIGTERM')
+            }
+          })().catch((error) => {
+            console.error(error)
+            process.exit(1)
+          })
+          NODE
 
       - name: Upload macOS artifacts
         uses: actions/upload-artifact@v4

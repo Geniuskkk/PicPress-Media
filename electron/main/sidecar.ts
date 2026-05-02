@@ -51,7 +51,13 @@ function getBinaryPath(): string {
 function getFfmpegPath(): string {
   if (app.isPackaged) {
     const ext = process.platform === 'win32' ? '.exe' : ''
-    return join(process.resourcesPath, 'ffmpeg', `ffmpeg${ext}`)
+    return join(
+      process.resourcesPath,
+      'app.asar.unpacked',
+      'node_modules',
+      'ffmpeg-static',
+      `ffmpeg${ext}`
+    )
   }
   // Dev: use ffmpeg-static from node_modules
   // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -64,7 +70,17 @@ function getFfmpegPath(): string {
 function getFfprobePath(): string {
   if (app.isPackaged) {
     const ext = process.platform === 'win32' ? '.exe' : ''
-    return join(process.resourcesPath, 'ffmpeg', `ffprobe${ext}`)
+    const arch = process.arch === 'arm64' ? 'arm64' : process.arch === 'ia32' ? 'ia32' : 'x64'
+    return join(
+      process.resourcesPath,
+      'app.asar.unpacked',
+      'node_modules',
+      'ffprobe-static',
+      'bin',
+      process.platform,
+      arch,
+      `ffprobe${ext}`
+    )
   }
   // Dev: use ffprobe-static from node_modules
   // eslint-disable-next-line @typescript-eslint/no-require-imports

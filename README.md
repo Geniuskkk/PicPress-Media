@@ -56,6 +56,7 @@ PicPress Media 是一款开源的跨平台桌面应用，基于 **Electron + Vue
 **macOS：** 打开 `.dmg`，将应用拖入 `Applications` 文件夹，双击启动即可。
 
 > 首次打开若提示「无法验证开发者」，请前往「系统设置 → 隐私与安全性」点击「仍要打开」。
+> 若提示文件已损坏，打开终端输入 xattr -cr /Applications/"PicPress Media.app"
 
 **Windows：** 双击 `.exe` 安装向导，按提示完成安装，在开始菜单或桌面快捷方式启动。
 

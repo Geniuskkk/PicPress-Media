@@ -5,7 +5,7 @@
 
 **本地图片处理 · 视频压缩桌面工具 / Local Image & Video Desktop App**
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![License: MIT + Commons Clause](https://img.shields.io/badge/License-MIT%20+%20Commons%20Clause-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey)](#下载--download)
 [![Go](https://img.shields.io/badge/Go-1.22+-00ADD8?logo=go)](https://go.dev)
 [![Vue](https://img.shields.io/badge/Vue-3-42b883?logo=vue.js)](https://vuejs.org)
@@ -347,5 +347,5 @@ Issues and Pull Requests are welcome.
 
 ### License
 
-[MIT](LICENSE) © 2026 PicPress Media Contributors
+[MIT + Commons Clause](LICENSE) © 2026 PicPress Media Contributors — 禁止商业销售与商业托管服务。
 

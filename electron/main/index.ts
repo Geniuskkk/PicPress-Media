@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, nativeImage } from 'electron'
+import { app, BrowserWindow, dialog, nativeImage, Menu } from 'electron'
 import { join, resolve } from 'path'
 import { startSidecar, waitForReady, killSidecar } from './sidecar'
 
@@ -23,6 +23,11 @@ let apiPort = 0
 let isQuitting = false
 
 function createWindow(): void {
+  // Remove the default application menu on non-macOS platforms
+  if (process.platform !== 'darwin') {
+    Menu.setApplicationMenu(null)
+  }
+
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 800,

@@ -25,6 +25,11 @@ runs:
         node-version: ${{ inputs.node-version }}
         cache: 'npm'
 
-    - name: Install Node dependencies
+    - name: Install Node dependencies (root)
       shell: bash
+      run: npm install --legacy-peer-deps
+
+    - name: Install Node dependencies (frontend workspace)
+      shell: bash
+      working-directory: frontend
       run: npm install --legacy-peer-deps

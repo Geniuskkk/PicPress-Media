@@ -1,6 +1,7 @@
 package processor
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -8,6 +9,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type VideoParams struct {
@@ -34,7 +36,10 @@ func ffprobeBin() string {
 	return "ffprobe"
 }
 
-func ProcessVideo(r io.Reader, filename string, p VideoParams) ([]byte, string, error) {
+// ProcessVideo transcodes a video with ffmpeg.
+// The provided context controls cancellation: when the client disconnects or
+// the request times out, the ffmpeg process is killed immediately.
+func ProcessVideo(ctx context.Context, r io.Reader, filename string, p VideoParams) ([]byte, string, error) {
 	ffmpeg := ffmpegBin()
 	ffprobe := ffprobeBin()
 
@@ -75,8 +80,19 @@ func ProcessVideo(r io.Reader, filename string, p VideoParams) ([]byte, string, 
 		return nil, "", err
 	}
 
-	output, err := exec.Command(ffmpegBin(), args...).CombinedOutput()
+	// Hard timeout: kill ffmpeg after 30 minutes regardless of progress.
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Minute)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, ffmpegBin(), args...)
+	output, err := cmd.CombinedOutput()
 	if err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			return nil, "", fmt.Errorf("ffmpeg timed out after 30 minutes")
+		}
+		if ctx.Err() == context.Canceled {
+			return nil, "", fmt.Errorf("video processing cancelled")
+		}
 		message := strings.TrimSpace(string(output))
 		if message == "" {
 			message = err.Error()

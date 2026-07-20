@@ -3,11 +3,23 @@ package handler
 import (
 	"archive/zip"
 	"fmt"
+	"mime/multipart"
 	"net/http"
+	"sync"
 
 	"github.com/picpress/picpress/internal/processor"
 )
 
+// batchResult holds the outcome for a single file in a batch.
+type batchResult struct {
+	name string
+	data []byte
+	err  error
+}
+
+// Batch processes multiple images concurrently and returns a ZIP archive.
+// Failed files are recorded in a `_errors.txt` entry inside the ZIP instead
+// of being silently skipped.
 func Batch(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, 500<<20) // 500 MB total
 	if err := r.ParseMultipartForm(500 << 20); err != nil {
@@ -25,47 +37,97 @@ func Batch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Per-file size limit (same as single image endpoint)
+	const maxFileSize = 50 << 20 // 50 MB
+
 	params := processor.Params{
 		Format:    sanitizeFormat(r.FormValue("format")),
 		Quality:   clamp(intForm(r, "quality", 85), 1, 100),
 		MaxSizeKB: intForm(r, "max_size_kb", 0),
 	}
 
+	// Process files concurrently with a worker pool to avoid OOM.
+	const workers = 4
+	results := make([]batchResult, len(files))
+	var wg sync.WaitGroup
+	sem := make(chan struct{}, workers)
+
+	for i, fh := range files {
+		wg.Add(1)
+		go func(i int, fh *multipart.FileHeader) {
+			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
+
+			results[i] = processBatchFile(fh, params, maxFileSize)
+		}(i, fh)
+	}
+	wg.Wait()
+
+	// Stream ZIP to response; failed files are written into _errors.txt.
 	w.Header().Set("Content-Type", "application/zip")
 	w.Header().Set("Content-Disposition", `attachment; filename="picpress_batch.zip"`)
 
 	zw := zip.NewWriter(w)
 	defer zw.Close()
 
-	for _, fh := range files {
-		contentType := fh.Header.Get("Content-Type")
-		if !isAllowedImage(contentType) {
+	var failed []string
+	for _, res := range results {
+		if res.err != nil {
+			failed = append(failed, fmt.Sprintf("%s: %v", res.name, res.err))
 			continue
 		}
 
-		f, err := fh.Open()
+		fw, err := zw.Create(res.name)
 		if err != nil {
+			// ZIP stream is already started; log the error and record it.
+			failed = append(failed, fmt.Sprintf("%s: zip create error: %v", res.name, err))
 			continue
 		}
-
-		result, _, err := processor.Process(f, params)
-		f.Close()
-		if err != nil {
-			continue
+		if _, err := fw.Write(res.data); err != nil {
+			failed = append(failed, fmt.Sprintf("%s: zip write error: %v", res.name, err))
 		}
+	}
 
-		name := stripExt(fh.Filename) + "_picpress." + params.Format
-		fw, err := zw.Create(name)
-		if err != nil {
-			http.Error(w, fmt.Sprintf("zip error: %v", err), http.StatusInternalServerError)
-			return
+	// Write error summary into the ZIP if any file failed.
+	if len(failed) > 0 {
+		ef, err := zw.Create("_errors.txt")
+		if err == nil {
+			for _, line := range failed {
+				fmt.Fprintln(ef, line)
+			}
 		}
-		fw.Write(result)
 	}
 }
 
+func processBatchFile(fh *multipart.FileHeader, params processor.Params, maxFileSize int64) batchResult {
+	name := stripExt(fh.Filename) + "_picpress." + params.Format
+
+	if fh.Size > maxFileSize {
+		return batchResult{name: name, err: fmt.Errorf("file too large (max 50MB)")}
+	}
+
+	contentType := fh.Header.Get("Content-Type")
+	if !isAllowedImage(contentType) {
+		return batchResult{name: name, err: fmt.Errorf("unsupported image type")}
+	}
+
+	f, err := fh.Open()
+	if err != nil {
+		return batchResult{name: name, err: fmt.Errorf("open file: %w", err)}
+	}
+	defer f.Close()
+
+	data, _, err := processor.Process(f, params)
+	if err != nil {
+		return batchResult{name: name, err: err}
+	}
+
+	return batchResult{name: name, data: data}
+}
+
 func stripExt(name string) string {
-	for i := len(name) - 1; i >= 0; i-- {
+	for i := len(name) - 1; i > 0; i-- {
 		if name[i] == '.' {
 			return name[:i]
 		}

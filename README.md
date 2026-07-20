@@ -7,7 +7,7 @@
 
 [![License: MIT + Commons Clause](https://img.shields.io/badge/License-MIT%20+%20Commons%20Clause-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey)](#下载--download)
-[![Go](https://img.shields.io/badge/Go-1.22+-00ADD8?logo=go)](https://go.dev)
+[![Go](https://img.shields.io/badge/Go-1.26+-00ADD8?logo=go)](https://go.dev)
 [![Vue](https://img.shields.io/badge/Vue-3-42b883?logo=vue.js)](https://vuejs.org)
 [![Electron](https://img.shields.io/badge/Electron-33-47848F?logo=electron)](https://www.electronjs.org)
 
@@ -37,7 +37,7 @@ PicPress Media 是一款开源的跨平台桌面应用，基于 **Electron + Vue
 | 🗜 图片压缩 | 质量滑块 + 目标体积（KB）控制，自动降低质量以满足大小限制 |
 | 🎬 单视频压缩 | 单个视频文件压缩，支持 MP4 / WebM 输出 |
 | 🔄 格式转换 | 图片支持 JPG · PNG · WebP · AVIF |
-| ↻ 旋转 / 翻转 | 单图支持顺 / 逆时针旋转与水平 / 垂直翻转 |
+| ↻ 旋转 / 翻转 | 单图支持顺 / 逆时针 90° 旋转、水平 / 垂直翻转；任意角度旋转由前端 Canvas 烘焙后导出，所见即所得 |
 | 🌙 深色模式 | 深色 / 浅色一键切换，偏好持久化 |
 | 📦 ffmpeg 内置 | 安装包内已包含 ffmpeg，无需系统单独安装 |
 
@@ -149,15 +149,15 @@ Content-Type: multipart/form-data
 
 **本地依赖：**
 
-- Go 1.22+
-- Node.js 18+
+- Go 1.26+
+- Node.js 20+
 - libvips（macOS: `brew install vips`，Ubuntu: `apt install libvips-dev`）
 - macOS 打包额外需要 `dylibbundler`（`brew install dylibbundler`）
 
 > ffmpeg 由 `ffmpeg-static` npm 包在开发时自动提供，打包时内置进安装包，无需手动安装。
 
 ```bash
-git clone https://github.com/Geniuskkk/ImageCroppingAndCompression.git
+git clone https://github.com/Geniuskkk/PicPress-Media.git
 cd PicPress-Media
 
 # 安装 Node 依赖
@@ -210,7 +210,7 @@ PicPress Media is an open-source cross-platform desktop application built with *
 | 🗜 Image Compression | Quality slider plus target size in KB |
 | 🎬 Single Video Compression | Compress one video and export as MP4 or WebM |
 | 🔄 Format Convert | JPG / PNG / WebP / AVIF for images |
-| ↻ Rotate / Flip | Rotate and flip single images |
+| ↻ Rotate / Flip | 90° clockwise/counter-clockwise rotation plus horizontal/vertical flip; arbitrary angles are baked into the image by the frontend Canvas before export for true WYSIWYG |
 | 🌙 Dark Mode | Toggle dark and light theme with persisted preference |
 | 📦 Bundled ffmpeg | ffmpeg is included in the installer — no separate install needed |
 
@@ -314,15 +314,15 @@ Content-Type: multipart/form-data
 
 **Prerequisites:**
 
-- Go 1.22+
-- Node.js 18+
+- Go 1.26+
+- Node.js 20+
 - libvips (macOS: `brew install vips`, Ubuntu: `apt install libvips-dev`)
 - `dylibbundler` for macOS packaging (`brew install dylibbundler`)
 
 > ffmpeg is provided automatically via `ffmpeg-static` in development and bundled into the installer for production.
 
 ```bash
-git clone https://github.com/Geniuskkk/ImageCroppingAndCompression.git
+git clone https://github.com/Geniuskkk/PicPress-Media.git
 cd PicPress-Media
 
 npm install --legacy-peer-deps
@@ -344,6 +344,7 @@ npm run dist:linux  # AppImage + deb
 ### Contributing
 
 Issues and Pull Requests are welcome.
+
 
 ### License
 

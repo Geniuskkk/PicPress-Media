@@ -17,21 +17,21 @@ jobs:
   build-mac:
     runs-on: macos-14
     steps:
-      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-env
 
-      - uses: actions/setup-go@v5
+      - name: Cache Homebrew packages
+        uses: actions/cache@v4
         with:
-          go-version-file: 'go.mod'
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
+          path: |
+            ~/Library/Caches/Homebrew/downloads
+            /opt/homebrew/Cellar/vips
+            /opt/homebrew/Cellar/dylibbundler
+          key: ${{ runner.os }}-brew-vips-dylibbundler-${{ hashFiles('.github/workflows/release.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-brew-vips-dylibbundler-
 
       - name: Install libvips and dylibbundler
         run: brew install vips dylibbundler
-
-      - name: Install Node dependencies
-        run: npm install --legacy-peer-deps
 
       - name: Build Go sidecar (arm64)
         run: npm run build:go:arm64
@@ -124,7 +124,7 @@ jobs:
   build-win:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-env
 
       # Install MinGW64 + libvips via MSYS2
       - uses: msys2/setup-msys2@v2
@@ -137,22 +137,18 @@ jobs:
             mingw-w64-x86_64-pkg-config
             mingw-w64-x86_64-libvips
 
-      - uses: actions/setup-go@v5
+      - name: Cache MSYS2 mingw64 packages
+        uses: actions/cache@v4
         with:
-          go-version-file: 'go.mod'
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
+          path: ${{ steps.msys2.outputs.msys2-location }}\mingw64
+          key: ${{ runner.os }}-msys2-mingw64-vips-${{ hashFiles('.github/workflows/release.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-msys2-mingw64-vips-
 
       - name: Add MSYS2 mingw64 to PATH
         shell: pwsh
         run: |
           "${{ steps.msys2.outputs.msys2-location }}\mingw64\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-
-      - name: Install Node dependencies
-        shell: pwsh
-        run: npm install --legacy-peer-deps
 
       - name: Build Go sidecar (Windows)
         shell: pwsh
@@ -199,15 +195,15 @@ jobs:
   build-linux:
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-env
 
-      - uses: actions/setup-go@v5
+      - name: Cache apt packages
+        uses: actions/cache@v4
         with:
-          go-version-file: 'go.mod'
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
+          path: /var/cache/apt/archives
+          key: ${{ runner.os }}-apt-vips-${{ hashFiles('.github/workflows/release.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-apt-vips-
 
       - name: Install libvips and electron-builder dependencies
         run: |
@@ -221,9 +217,6 @@ jobs:
             libnss3-dev \
             libatk-bridge2.0-0 \
             libgtk-3-0
-
-      - name: Install Node dependencies
-        run: npm install --legacy-peer-deps
 
       - name: Build Go sidecar
         run: npm run build:go

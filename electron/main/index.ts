@@ -117,9 +117,14 @@ app.on('before-quit', () => {
   isQuitting = true
 })
 
-// Kill the Go sidecar when Electron is about to exit
-app.on('will-quit', () => {
+// Kill the Go sidecar when Electron is about to exit.
+// will-quit is not async-aware, so we preventDefault to keep the app alive
+// while killSidecar() runs, then exit explicitly when done.
+app.on('will-quit', (event) => {
+  event.preventDefault()
   killSidecar()
+    .catch((err) => console.error('[sidecar] kill error:', err))
+    .finally(() => app.exit(0))
 })
 
 // Windows / Linux: quit the app when all windows are closed

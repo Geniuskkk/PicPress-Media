@@ -2,6 +2,7 @@ package handler
 
 import (
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 
@@ -24,11 +25,33 @@ func Process(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
-	// Validate MIME type
+	// Validate MIME type from header
 	contentType := header.Header.Get("Content-Type")
 	if !isAllowedImage(contentType) {
 		http.Error(w, "unsupported image type", http.StatusBadRequest)
 		return
+	}
+
+	// Sniff the first 512 bytes to verify the actual content type.
+	// This prevents clients from forging the Content-Type header.
+	sniffBuf := make([]byte, 512)
+	n, err := file.Read(sniffBuf)
+	if err != nil && err != io.EOF {
+		http.Error(w, "read file error", http.StatusInternalServerError)
+		return
+	}
+	sniffed := http.DetectContentType(sniffBuf[:n])
+	if !isAllowedImage(sniffed) {
+		http.Error(w, "file content does not match a supported image type", http.StatusBadRequest)
+		return
+	}
+
+	// Seek back to the beginning so the processor reads the full file.
+	if seeker, ok := file.(io.Seeker); ok {
+		if _, err := seeker.Seek(0, io.SeekStart); err != nil {
+			http.Error(w, "seek file error", http.StatusInternalServerError)
+			return
+		}
 	}
 
 	params := processor.Params{
@@ -56,7 +79,10 @@ func Process(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Length", strconv.Itoa(len(result)))
 	w.Header().Set("Content-Disposition", "attachment")
 	w.WriteHeader(http.StatusOK)
-	w.Write(result)
+	if _, err := w.Write(result); err != nil {
+		// Client may have disconnected; log for observability.
+		fmt.Printf("write response error: %v\n", err)
+	}
 }
 
 func isAllowedImage(mime string) bool {

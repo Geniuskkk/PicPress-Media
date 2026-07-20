@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -44,7 +45,15 @@ func main() {
 	addr := "127.0.0.1:" + port
 	log.Printf("PicPress Media sidecar listening on %s", addr)
 
-	if err := http.ListenAndServe(addr, r); err != nil {
+	server := &http.Server{
+		Addr:         addr,
+		Handler:      r,
+		ReadTimeout:  5 * time.Minute,  // large image/video uploads
+		WriteTimeout: 10 * time.Minute, // long video transcoding
+		IdleTimeout:  60 * time.Second,
+	}
+
+	if err := server.ListenAndServe(); err != nil {
 		log.Fatalf("server error: %v", err)
 	}
 }

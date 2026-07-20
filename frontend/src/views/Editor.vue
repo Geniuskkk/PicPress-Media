@@ -240,15 +240,37 @@ async function process() {
 
   try {
     const cropData = cropper.getData(true)
+    const rotateDeg = Math.round(cropData.rotate ?? 0)
+    const isRightAngle = rotateDeg % 90 === 0
+
+    // For arbitrary (non-90°) rotation or any flip, bake the transform into
+    // the image pixels via Canvas first so the backend only needs to crop.
+    // This guarantees WYSIWYG because the backend receives the exact visual
+    // canvas the user sees in cropperjs.
+    let fileToSend: File | Blob = store.currentFile
+    let cropX = Math.round(cropData.x)
+    let cropY = Math.round(cropData.y)
+    let cropW = Math.round(cropData.width)
+    let cropH = Math.round(cropData.height)
+
+    if (!isRightAngle || cropData.scaleX === -1 || cropData.scaleY === -1) {
+      const baked = await bakeTransform(store.currentFile, cropData)
+      fileToSend = baked.file
+      cropX = baked.cropX
+      cropY = baked.cropY
+      cropW = baked.cropW
+      cropH = baked.cropH
+    }
+
     const blob = await processImage({
-      file: store.currentFile,
-      cropX: Math.round(cropData.x),
-      cropY: Math.round(cropData.y),
-      cropW: Math.round(cropData.width),
-      cropH: Math.round(cropData.height),
-      rotate: Math.round(cropData.rotate ?? 0),
-      flipH: cropData.scaleX === -1,
-      flipV: cropData.scaleY === -1,
+      file: fileToSend as File,
+      cropX,
+      cropY,
+      cropW,
+      cropH,
+      rotate: isRightAngle ? rotateDeg : 0,
+      flipH: isRightAngle && cropData.scaleX === -1,
+      flipV: isRightAngle && cropData.scaleY === -1,
       outputWidth: outputWidth.value || undefined,
       outputHeight: outputHeight.value || undefined,
       format: format.value,
@@ -263,6 +285,81 @@ async function process() {
   } finally {
     processing.value = false
   }
+}
+
+/**
+ * Bake cropperjs rotation/flip into a new image via Canvas, and remap the
+ * crop rectangle from the original image coordinate space to the baked
+ * canvas coordinate space.
+ */
+async function bakeTransform(
+  sourceFile: File,
+  cropData: Cropper.Data,
+): Promise<{ file: File; cropX: number; cropY: number; cropW: number; cropH: number }> {
+  const img = await loadImage(sourceFile)
+  const rad = ((cropData.rotate ?? 0) * Math.PI) / 180
+  const cos = Math.cos(rad)
+  const sin = Math.sin(rad)
+
+  // Bounding box of the rotated image
+  const w = img.naturalWidth
+  const h = img.naturalHeight
+  const newW = Math.ceil(w * Math.abs(cos) + h * Math.abs(sin))
+  const newH = Math.ceil(w * Math.abs(sin) + h * Math.abs(cos))
+
+  const canvas = document.createElement('canvas')
+  canvas.width = newW
+  canvas.height = newH
+  const ctx = canvas.getContext('2d')!
+
+  // Move origin to canvas center, apply rotation + flip, draw image centered
+  ctx.translate(newW / 2, newH / 2)
+  ctx.rotate(rad)
+  ctx.scale(cropData.scaleX ?? 1, cropData.scaleY ?? 1)
+  ctx.drawImage(img, -w / 2, -h / 2)
+
+  // Map crop rect from original image space to baked canvas space
+  const cx = cropData.x + cropData.width / 2
+  const cy = cropData.y + cropData.height / 2
+  const rx = cx * cos + cy * sin
+  const ry = -cx * sin + cy * cos
+  const scaleX = cropData.scaleX ?? 1
+  const scaleY = cropData.scaleY ?? 1
+
+  const bakedCx = newW / 2 + rx * scaleX
+  const bakedCy = newH / 2 + ry * scaleY
+  const bakedW = cropData.width * Math.abs(scaleX)
+  const bakedH = cropData.height * Math.abs(scaleY)
+
+  const cropX = Math.max(0, Math.round(bakedCx - bakedW / 2))
+  const cropY = Math.max(0, Math.round(bakedCy - bakedH / 2))
+  const cropW = Math.min(newW - cropX, Math.round(bakedW))
+  const cropH = Math.min(newH - cropY, Math.round(bakedH))
+
+  const blob = await new Promise<Blob | null>((resolve) =>
+    canvas.toBlob((b) => resolve(b), sourceFile.type || 'image/png'),
+  )
+  if (!blob) throw new Error('Canvas toBlob failed')
+
+  const name = sourceFile.name.replace(/\.[^.]+$/, '') + '_baked.' + (sourceFile.type.split('/')[1] || 'png')
+  const file = new File([blob], name, { type: blob.type })
+  return { file, cropX, cropY, cropW, cropH }
+}
+
+function loadImage(file: File): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file)
+    const img = new Image()
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      resolve(img)
+    }
+    img.onerror = () => {
+      URL.revokeObjectURL(url)
+      reject(new Error('Failed to load image'))
+    }
+    img.src = url
+  })
 }
 
 function download() {

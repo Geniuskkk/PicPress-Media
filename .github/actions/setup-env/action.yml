@@ -1,0 +1,30 @@
+name: Setup PicPress Build Environment
+description: >-
+  Common environment setup for PicPress Media CI: checkout, Go, Node with cache.
+  Platform-specific system dependencies (libvips, dylibbundler, msys2, apt packages)
+  are handled by the caller job.
+
+inputs:
+  node-version:
+    description: 'Node.js version to use'
+    required: false
+    default: '20'
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/checkout@v4
+
+    - uses: actions/setup-go@v5
+      with:
+        go-version-file: 'go.mod'
+        cache: true
+
+    - uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: 'npm'
+
+    - name: Install Node dependencies
+      shell: bash
+      run: npm install --legacy-peer-deps

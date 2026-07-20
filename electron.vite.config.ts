@@ -1,6 +1,11 @@
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 import vue from '@vitejs/plugin-vue'
 import { resolve } from 'path'
+import { fileURLToPath } from 'url'
+
+// electron.vite.config.ts is loaded as CJS by electron-vite, but we use
+// import.meta.dirname (Node 20.11+) for future-proof ESM compatibility.
+const __dirname = import.meta.dirname ?? fileURLToPath(new URL('.', import.meta.url))
 
 export default defineConfig({
   main: {

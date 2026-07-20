@@ -15,7 +15,9 @@
     "paths": {
       "@/*": ["./src/*"]
     },
-    "ignoreDeprecations": "6.0",
+    // This value must match the installed TypeScript major version.
+    // TypeScript 5.x → "5.0", TypeScript 6.x → "6.0", etc.
+    "ignoreDeprecations": "5.0",
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "erasableSyntaxOnly": true,

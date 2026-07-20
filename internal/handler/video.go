@@ -38,7 +38,7 @@ func VideoProcess(w http.ResponseWriter, r *http.Request) {
 		MaxSizeMB: intForm(r, "max_size_mb", 0),
 	}
 
-	result, mimeType, err := processor.ProcessVideo(file, header.Filename, params)
+	result, mimeType, err := processor.ProcessVideo(r.Context(), file, header.Filename, params)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("video processing failed: %v", err), http.StatusInternalServerError)
 		return

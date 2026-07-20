@@ -109,6 +109,11 @@
           <button @click="process" :disabled="processing" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white rounded-lg font-medium transition-colors">
             {{ processing ? '压缩中...' : '开始压缩' }}
           </button>
+          <button
+            v-if="processing"
+            @click="cancelProcess"
+            class="w-full mt-2 py-2 text-sm border border-red-300 dark:border-red-600 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+          >取消压缩</button>
         </div>
       </div>
     </div>
@@ -153,6 +158,8 @@ const activePreviewSrc = computed(() => {
   return originalSrc.value
 })
 
+let abortController: AbortController | null = null
+
 onMounted(() => {
   if (!store.currentVideoFile) return
   originalSize.value = store.currentVideoFile.size
@@ -184,6 +191,7 @@ function onPageDrop(e: DragEvent) {
 async function process() {
   if (!store.currentVideoFile) return
   processing.value = true
+  abortController = new AbortController()
 
   try {
     const blob = await processVideo({
@@ -191,6 +199,7 @@ async function process() {
       format: format.value,
       quality: quality.value,
       maxSizeMB: maxSizeMB.value || 0,
+      signal: abortController.signal,
     })
     processedBlob.value = blob
     processedSize.value = blob.size
@@ -198,11 +207,20 @@ async function process() {
     processedSrc.value = URL.createObjectURL(blob)
     previewMode.value = 'processed'
   } catch (error) {
-    console.error(error)
-    alert(error instanceof Error ? error.message : '视频压缩失败，请重试')
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      console.log('Video processing cancelled by user')
+    } else {
+      console.error(error)
+      alert(error instanceof Error ? error.message : '视频压缩失败，请重试')
+    }
   } finally {
     processing.value = false
+    abortController = null
   }
+}
+
+function cancelProcess() {
+  abortController?.abort()
 }
 
 function download() {

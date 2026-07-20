@@ -3,10 +3,17 @@ import { spawn, ChildProcess } from 'child_process'
 import { join } from 'path'
 import { createServer } from 'net'
 import { existsSync, chmodSync } from 'fs'
+import { createRequire } from 'module'
+
+// sidecar.ts is bundled as CJS by electron-vite, but we use createRequire
+// for future-proof ESM compatibility when resolving ffmpeg-static/ffprobe-static.
+const require = createRequire(import.meta.url)
 
 let sidecarProcess: ChildProcess | null = null
 let sidecarStartupError: Error | null = null
 let sidecarStderr = ''
+let sidecarExitPromise: Promise<void> | null = null
+let sidecarExitResolve: (() => void) | null = null
 
 function rememberSidecarStderr(data: Buffer): void {
   sidecarStderr = `${sidecarStderr}${data.toString()}`.slice(-4000)
@@ -130,6 +137,10 @@ export async function startSidecar(): Promise<number> {
     spawnEnv.PATH = `${binDir};${process.env.PATH ?? ''}`
   }
 
+  sidecarExitPromise = new Promise((resolve) => {
+    sidecarExitResolve = resolve
+  })
+
   sidecarProcess = spawn(binaryPath, [], {
     env: spawnEnv,
     stdio: ['ignore', 'pipe', 'pipe'],
@@ -144,6 +155,7 @@ export async function startSidecar(): Promise<number> {
   })
   sidecarProcess.on('error', (error) => {
     sidecarStartupError = buildSidecarError(`Failed to start Go sidecar: ${error.message}`)
+    sidecarExitResolve?.()
   })
   sidecarProcess.on('exit', (code, signal) => {
     console.log(`[sidecar] exited — code=${code} signal=${signal}`)
@@ -153,6 +165,8 @@ export async function startSidecar(): Promise<number> {
       )
     }
     sidecarProcess = null
+    sidecarExitResolve?.()
+    sidecarExitResolve = null
   })
 
   return port
@@ -184,10 +198,30 @@ export async function waitForReady(port: number, timeoutMs = 15_000): Promise<vo
   throw buildSidecarError(`Go sidecar did not become ready within ${timeoutMs / 1000}s`)
 }
 
-/** Gracefully terminate the Go sidecar process. */
-export function killSidecar(): void {
-  if (sidecarProcess && !sidecarProcess.killed) {
-    sidecarProcess.kill('SIGTERM')
-    sidecarProcess = null
+/**
+ * Gracefully terminate the Go sidecar process and wait for it to exit.
+ * Falls back to SIGKILL if SIGTERM does not work within 5 seconds.
+ */
+export async function killSidecar(): Promise<void> {
+  if (!sidecarProcess || sidecarProcess.killed) {
+    return
   }
+
+  const proc = sidecarProcess
+  sidecarProcess = null
+
+  proc.kill('SIGTERM')
+
+  // Wait for exit, or force-kill after 5 seconds
+  const timeout = new Promise<void>((resolve) => setTimeout(resolve, 5_000))
+  const exited = sidecarExitPromise ?? Promise.resolve()
+
+  await Promise.race([exited, timeout])
+
+  if (!proc.killed) {
+    proc.kill('SIGKILL')
+  }
+
+  sidecarExitResolve = null
+  sidecarStartupError = null
 }

@@ -26,6 +26,7 @@ export interface VideoProcessParams {
   format?: string
   quality?: number
   maxSizeMB?: number
+  signal?: AbortSignal
 }
 
 export async function processImage(params: ProcessParams): Promise<Blob> {
@@ -61,7 +62,11 @@ export async function processVideo(params: VideoProcessParams): Promise<Blob> {
   if (params.quality !== undefined) form.append('quality', String(params.quality))
   if (params.maxSizeMB !== undefined) form.append('max_size_mb', String(params.maxSizeMB))
 
-  const resp = await fetch(BASE + '/api/video/process', { method: 'POST', body: form })
+  const resp = await fetch(BASE + '/api/video/process', {
+    method: 'POST',
+    body: form,
+    signal: params.signal,
+  })
   if (!resp.ok) {
     const msg = await resp.text().catch(() => resp.statusText)
     throw new Error(msg)

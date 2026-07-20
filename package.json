@@ -1,6 +1,6 @@
 {
   "name": "picpress-media",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "PicPress Media — Image & Video Desktop App",
   "author": {
     "name": "kk",
@@ -22,25 +22,18 @@
     "postinstall": "electron-builder install-app-deps"
   },
   "dependencies": {
-    "ffmpeg-static": "^5.2.0",
+    "ffmpeg-static": "^5.3.0",
     "ffprobe-static": "^3.1.0"
   },
   "devDependencies": {
-    "@types/node": "^20.17.0",
-    "@vitejs/plugin-vue": "^5.2.0",
-    "electron": "^33.4.0",
-    "electron-builder": "^25.1.8",
-    "electron-vite": "^2.3.0",
-    "typescript": "^5.7.0",
-    "vue": "^3.5.32",
-    "vue-router": "^4.5.0",
-    "pinia": "^2.3.0",
-    "cropperjs": "^1.6.2",
-    "jszip": "^3.10.1",
-    "lucide-vue-next": "^0.469.0",
-    "tailwindcss": "^3.4.17",
-    "autoprefixer": "^10.4.20",
-    "postcss": "^8.4.49",
-    "vite": "^5.4.0"
+    "@swc/core": "^1.15.46",
+    "@types/node": "^22.20.1",
+    "@vitejs/plugin-vue": "^6.0.8",
+    "electron": "^42.7.0",
+    "electron-builder": "^26.15.7",
+    "electron-vite": "^4.0.1",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.6",
+    "vue": "^3.5.40"
   }
 }

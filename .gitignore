@@ -49,3 +49,7 @@ buildResources/
 *.log
 tmp/
 temp/
+
+# ===== Project docs (release notes kept local only) =====
+docs/
+

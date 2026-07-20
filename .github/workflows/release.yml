@@ -17,6 +17,7 @@ jobs:
   build-mac:
     runs-on: macos-14
     steps:
+      - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-env
 
       - name: Cache Homebrew packages
@@ -124,6 +125,7 @@ jobs:
   build-win:
     runs-on: windows-latest
     steps:
+      - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-env
 
       # Install MinGW64 + libvips via MSYS2
@@ -195,6 +197,7 @@ jobs:
   build-linux:
     runs-on: ubuntu-22.04
     steps:
+      - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-env
 
       - name: Cache apt packages

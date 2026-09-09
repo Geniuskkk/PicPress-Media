@@ -44,12 +44,33 @@ $RECYCLE.BIN/
 # ===== Electron builder cache =====
 .cache/
 buildResources/
+build/bin/
+web/
+
+# Packaged installers generated outside dist/
+*.dmg
+*.AppImage
+*.deb
+*.msi
 
 # ===== Temp / logs =====
 *.log
 tmp/
 temp/
 
+# ===== Local environment and secrets =====
+.env
+.env.*
+!.env.example
+
+# ===== Test and coverage outputs =====
+coverage/
+.nyc_output/
+*.lcov
+
+# ===== Tool caches =====
+.eslintcache
+.vite/
+
 # ===== Project docs (release notes kept local only) =====
 docs/
-

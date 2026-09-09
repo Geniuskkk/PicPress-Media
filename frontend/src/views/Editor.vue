@@ -34,7 +34,7 @@
           <section>
             <h3 class="mb-2 flex items-center gap-2 text-sm font-semibold leading-none text-gray-700 dark:text-gray-300">
               <span class="flex h-4 w-4 shrink-0 items-center justify-center" aria-hidden="true">
-                <img :src="chiziIcon" alt="" class="block max-h-full max-w-full object-contain" />
+                <Crop class="h-4 w-4" aria-hidden="true" />
               </span>
               <span>裁剪比例</span>
             </h3>
@@ -75,7 +75,7 @@
           <section>
             <h3 class="mb-2 flex items-center gap-2 text-sm font-semibold leading-none text-gray-700 dark:text-gray-300">
               <span class="flex h-4 w-4 shrink-0 items-center justify-center" aria-hidden="true">
-                <img :src="shuaxinIcon2" alt="" class="block max-h-full max-w-full object-contain" />
+                <RotateCw class="h-4 w-4" aria-hidden="true" />
               </span>
               <span>旋转 / 翻转</span>
             </h3>
@@ -93,7 +93,7 @@
           <section>
             <h3 class="mb-2 flex items-center gap-2 text-sm font-semibold leading-none text-gray-700 dark:text-gray-300">
               <span class="flex h-4 w-4 shrink-0 items-center justify-center" aria-hidden="true">
-                <img :src="yaSuoIcon" alt="" class="block max-h-full max-w-full object-contain" />
+                <Minimize2 class="h-4 w-4" aria-hidden="true" />
               </span>
               <span>压缩设置</span>
             </h3>
@@ -107,7 +107,7 @@
           <section>
             <h3 class="mb-2 flex items-center gap-2 text-sm font-semibold leading-none text-gray-700 dark:text-gray-300">
               <span class="flex h-4 w-4 shrink-0 items-center justify-center" aria-hidden="true">
-                <img :src="shuaxinIcon" alt="" class="block max-h-full max-w-full object-contain" />
+                <FileImage class="h-4 w-4" aria-hidden="true" />
               </span>
               <span>输出格式</span>
             </h3>
@@ -137,10 +137,7 @@ import { useImageStore } from '@/stores/imageStore'
 import { processImage } from '@/utils/api'
 import { formatSize } from '@/utils/format'
 import { findPhotoSizePreset, formatPhotoSizeLabel, getPhotoSizeRatio, photoSizePresets } from '@/utils/photoSizes'
-import chiziIcon from '@/assets/chizi.svg'
-import yaSuoIcon from '@/assets/yasuo.svg'
-import shuaxinIcon from '@/assets/shuaxin_1.svg'
-import shuaxinIcon2 from '@/assets/shuaxin.svg'
+import { Crop, FileImage, Minimize2, RotateCw } from 'lucide-vue-next'
 const store = useImageStore()
 const imgEl = ref<HTMLImageElement>()
 const imgSrc = ref('')

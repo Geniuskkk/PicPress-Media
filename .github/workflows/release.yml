@@ -6,7 +6,11 @@ on:
       - 'v*.*.*'
 
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   # ────────────────────────────────────────────────
@@ -16,20 +20,10 @@ jobs:
   # ────────────────────────────────────────────────
   build-mac:
     runs-on: macos-14
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-env
-
-      - name: Cache Homebrew packages
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/Library/Caches/Homebrew/downloads
-            /opt/homebrew/Cellar/vips
-            /opt/homebrew/Cellar/dylibbundler
-          key: ${{ runner.os }}-brew-vips-dylibbundler-${{ hashFiles('.github/workflows/release.yml') }}
-          restore-keys: |
-            ${{ runner.os }}-brew-vips-dylibbundler-
 
       - name: Install libvips and dylibbundler
         run: brew install vips dylibbundler
@@ -117,13 +111,14 @@ jobs:
           path: |
             dist/*.dmg
             dist/*.zip
-          if-no-files-found: warn
+          if-no-files-found: error
 
   # ────────────────────────────────────────────────
   # Windows
   # ────────────────────────────────────────────────
   build-win:
     runs-on: windows-latest
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-env
@@ -138,14 +133,6 @@ jobs:
             mingw-w64-x86_64-gcc
             mingw-w64-x86_64-pkg-config
             mingw-w64-x86_64-libvips
-
-      - name: Cache MSYS2 mingw64 packages
-        uses: actions/cache@v4
-        with:
-          path: ${{ steps.msys2.outputs.msys2-location }}\mingw64
-          key: ${{ runner.os }}-msys2-mingw64-vips-${{ hashFiles('.github/workflows/release.yml') }}
-          restore-keys: |
-            ${{ runner.os }}-msys2-mingw64-vips-
 
       - name: Add MSYS2 mingw64 to PATH
         shell: pwsh
@@ -184,18 +171,37 @@ jobs:
           CC: 'gcc'
           CXX: 'g++'
 
+      - name: Smoke test packaged Windows sidecar
+        shell: pwsh
+        run: |
+          $sidecar = "dist/win-unpacked/resources/bin/picpress.exe"
+          if (!(Test-Path $sidecar)) { throw "Packaged sidecar not found: $sidecar" }
+          $env:PORT = "54321"
+          $process = Start-Process -FilePath $sidecar -PassThru -NoNewWindow
+          try {
+            $ready = $false
+            1..30 | ForEach-Object {
+              if (!$ready) {
+                try { $response = Invoke-WebRequest "http://127.0.0.1:54321/api/health" -UseBasicParsing -TimeoutSec 1; if ($response.StatusCode -eq 200) { $ready = $true } } catch {}
+                if (!$ready) { Start-Sleep -Milliseconds 500 }
+              }
+            }
+            if (!$ready) { throw "Windows sidecar health check timed out" }
+          } finally { if (!$process.HasExited) { Stop-Process $process.Id -Force } }
+
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
         with:
           name: win-dist
           path: dist/*.exe
-          if-no-files-found: warn
+          if-no-files-found: error
 
   # ────────────────────────────────────────────────
   # Linux
   # ────────────────────────────────────────────────
   build-linux:
     runs-on: ubuntu-22.04
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-env
@@ -231,6 +237,20 @@ jobs:
         env:
           CGO_ENABLED: '1'
 
+      - name: Smoke test packaged Linux sidecar
+        run: |
+          SIDECAR="dist/linux-unpacked/resources/bin/picpress"
+          test -x "$SIDECAR"
+          PORT=54321 "$SIDECAR" >/tmp/picpress-sidecar.log 2>&1 &
+          PID=$!
+          trap 'kill "$PID" 2>/dev/null || true' EXIT
+          for i in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:54321/api/health >/dev/null; then exit 0; fi
+            sleep 0.5
+          done
+          cat /tmp/picpress-sidecar.log
+          exit 1
+
       - name: Upload Linux artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -238,7 +258,7 @@ jobs:
           path: |
             dist/*.AppImage
             dist/*.deb
-          if-no-files-found: warn
+          if-no-files-found: error
 
   # ────────────────────────────────────────────────
   # Create GitHub Release
@@ -246,6 +266,9 @@ jobs:
   release:
     needs: [build-mac, build-win, build-linux]
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v4

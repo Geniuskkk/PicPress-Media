@@ -1,6 +1,6 @@
 name: Setup PicPress Build Environment
 description: >-
-  Common environment setup for PicPress Media CI: checkout, Go, Node with cache.
+  Common environment setup for PicPress Media CI: Go and Node with cache.
   Platform-specific system dependencies (libvips, dylibbundler, msys2, apt packages)
   are handled by the caller job.
 
@@ -13,8 +13,6 @@ inputs:
 runs:
   using: composite
   steps:
-    - uses: actions/checkout@v4
-
     - uses: actions/setup-go@v5
       with:
         go-version-file: 'go.mod'
@@ -24,12 +22,21 @@ runs:
       with:
         node-version: ${{ inputs.node-version }}
         cache: 'npm'
+        cache-dependency-path: |
+          package-lock.json
+          frontend/package-lock.json
 
     - name: Install Node dependencies (root)
       shell: bash
-      run: npm install --legacy-peer-deps
+      run: npm ci --legacy-peer-deps
 
     - name: Install Node dependencies (frontend workspace)
       shell: bash
       working-directory: frontend
-      run: npm install --legacy-peer-deps
+      run: npm ci --legacy-peer-deps
+
+    - name: Verify release version
+      if: startsWith(github.ref, 'refs/tags/v')
+      shell: bash
+      run: |
+        test "$(node -p "require('./package.json').version")" = "${GITHUB_REF_NAME#v}"

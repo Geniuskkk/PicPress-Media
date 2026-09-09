@@ -3,6 +3,7 @@ package handler
 import (
 	"archive/zip"
 	"fmt"
+	"io"
 	"mime/multipart"
 	"net/http"
 	"sync"
@@ -41,9 +42,18 @@ func Batch(w http.ResponseWriter, r *http.Request) {
 	const maxFileSize = 50 << 20 // 50 MB
 
 	params := processor.Params{
-		Format:    sanitizeFormat(r.FormValue("format")),
-		Quality:   clamp(intForm(r, "quality", 85), 1, 100),
-		MaxSizeKB: intForm(r, "max_size_kb", 0),
+		CropX:        intForm(r, "crop_x", -1),
+		CropY:        intForm(r, "crop_y", -1),
+		CropW:        intForm(r, "crop_w", 0),
+		CropH:        intForm(r, "crop_h", 0),
+		Rotate:       intForm(r, "rotate", 0),
+		FlipH:        r.FormValue("flip_h") == "1",
+		FlipV:        r.FormValue("flip_v") == "1",
+		OutputWidth:  intForm(r, "output_width", 0),
+		OutputHeight: intForm(r, "output_height", 0),
+		Format:       sanitizeFormat(r.FormValue("format")),
+		Quality:      clamp(intForm(r, "quality", 85), 1, 100),
+		MaxSizeKB:    clamp(intForm(r, "max_size_kb", 0), 0, 1024*1024),
 	}
 
 	// Process files concurrently with a worker pool to avoid OOM.
@@ -72,13 +82,15 @@ func Batch(w http.ResponseWriter, r *http.Request) {
 	defer zw.Close()
 
 	var failed []string
+	usedNames := make(map[string]int)
 	for _, res := range results {
 		if res.err != nil {
 			failed = append(failed, fmt.Sprintf("%s: %v", res.name, res.err))
 			continue
 		}
 
-		fw, err := zw.Create(res.name)
+		name := uniqueZipName(res.name, usedNames)
+		fw, err := zw.Create(name)
 		if err != nil {
 			// ZIP stream is already started; log the error and record it.
 			failed = append(failed, fmt.Sprintf("%s: zip create error: %v", res.name, err))
@@ -100,6 +112,33 @@ func Batch(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func uniqueZipName(name string, used map[string]int) string {
+	if used[name] == 0 {
+		used[name] = 1
+		return name
+	}
+	count := used[name]
+	used[name]++
+	for {
+		base, ext := splitExt(name)
+		candidate := fmt.Sprintf("%s_%d%s", base, count, ext)
+		if used[candidate] == 0 {
+			used[candidate] = 1
+			return candidate
+		}
+		count++
+	}
+}
+
+func splitExt(name string) (string, string) {
+	for i := len(name) - 1; i > 0; i-- {
+		if name[i] == '.' {
+			return name[:i], name[i:]
+		}
+	}
+	return name, ""
+}
+
 func processBatchFile(fh *multipart.FileHeader, params processor.Params, maxFileSize int64) batchResult {
 	name := stripExt(fh.Filename) + "_picpress." + params.Format
 
@@ -117,6 +156,19 @@ func processBatchFile(fh *multipart.FileHeader, params processor.Params, maxFile
 		return batchResult{name: name, err: fmt.Errorf("open file: %w", err)}
 	}
 	defer f.Close()
+	buf := make([]byte, 512)
+	n, err := f.Read(buf)
+	if err != nil && err != io.EOF {
+		return batchResult{name: name, err: fmt.Errorf("read file: %w", err)}
+	}
+	if !isAllowedImage(http.DetectContentType(buf[:n])) {
+		return batchResult{name: name, err: fmt.Errorf("file content does not match a supported image type")}
+	}
+	if seeker, ok := f.(io.Seeker); ok {
+		if _, err := seeker.Seek(0, io.SeekStart); err != nil {
+			return batchResult{name: name, err: fmt.Errorf("seek file: %w", err)}
+		}
+	}
 
 	data, _, err := processor.Process(f, params)
 	if err != nil {

@@ -30,6 +30,10 @@ const config: Configuration = {
       from: 'sidecar-bin/',
       to: 'bin/',
     },
+    // Electron reads these paths at runtime for the window and Dock/taskbar icon.
+    { from: 'build/icon.icns', to: 'icon.icns' },
+    { from: 'build/icon.ico', to: 'icon.ico' },
+    { from: 'build/icons', to: 'icons' },
   ],
 
   afterPack: './scripts/verify-sidecar.mjs',

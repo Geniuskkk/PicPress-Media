@@ -9,7 +9,7 @@
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey)](#下载--download)
 [![Go](https://img.shields.io/badge/Go-1.26+-00ADD8?logo=go)](https://go.dev)
 [![Vue](https://img.shields.io/badge/Vue-3-42b883?logo=vue.js)](https://vuejs.org)
-[![Electron](https://img.shields.io/badge/Electron-33-47848F?logo=electron)](https://www.electronjs.org)
+[![Electron](https://img.shields.io/badge/Electron-42-47848F?logo=electron)](https://www.electronjs.org)
 
 [中文](#中文) · [English](#english)
 
@@ -126,6 +126,7 @@ Content-Type: multipart/form-data
 ```
 
 参数同单张图片处理，`files` 字段可传多个文件，返回 `application/zip`。
+每个文件最大 50 MB，单次最多 100 个文件；失败文件会记录在 ZIP 内的 `_errors.txt` 中。
 
 #### 压缩单个视频
 
@@ -349,4 +350,3 @@ Issues and Pull Requests are welcome.
 ### License
 
 [MIT + Commons Clause](LICENSE) © 2026 PicPress Media Contributors — 禁止商业销售与商业托管服务。
-

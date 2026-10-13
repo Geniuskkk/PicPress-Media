@@ -16,7 +16,7 @@
       </div>
     </div>
 
-  <div v-if="store.currentVideoFile" class="flex flex-col h-[calc(100vh-57px)] relative">
+  <div v-if="store.currentVideoFile" class="flex flex-col h-[calc(100vh-61px)] relative">
     <div class="flex items-center justify-between px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
       <RouterLink to="/" class="flex items-center gap-1 text-sm text-gray-500 hover:text-blue-600 dark:hover:text-blue-400">
         <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
@@ -119,7 +119,7 @@
     </div>
   </div>
 
-  <div v-else class="min-h-[calc(100vh-57px)] flex items-center justify-center p-6">
+  <div v-else class="min-h-[calc(100vh-61px)] flex items-center justify-center p-6">
     <div class="text-center">
       <svg xmlns="http://www.w3.org/2000/svg" class="w-16 h-16 mx-auto text-gray-300 dark:text-gray-600 mb-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="7" width="14" height="10" rx="2"/><path d="M16 9.5l6-2.5v10l-6-2.5V9.5z"/></svg>
       <p class="text-lg font-medium text-gray-700 dark:text-gray-200">还没有选择视频</p>

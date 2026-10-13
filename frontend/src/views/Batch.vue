@@ -1,6 +1,6 @@
 <template>
   <div
-    class="flex flex-col h-[calc(100vh-57px)] relative"
+    class="flex flex-col h-[calc(100vh-61px)] relative"
     @dragover.prevent="pageDragging = true"
     @dragleave.self="pageDragging = false"
     @drop.prevent="onPageDrop"

@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col items-center justify-center min-h-[calc(100vh-57px)] p-6">
+  <div class="flex flex-col items-center justify-center min-h-[calc(100vh-61px)] p-6">
     <div class="w-full max-w-2xl">
       <h1 class="text-3xl font-bold text-center mb-2 text-gray-900 dark:text-white">图片处理 & 视频压缩</h1>
       <p class="text-center text-gray-500 dark:text-gray-400 mb-8">本地处理图片和视频，数据不离开你的电脑</p>

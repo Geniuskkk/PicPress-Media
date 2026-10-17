@@ -22,13 +22,13 @@
     <div class="flex flex-1 overflow-hidden">
       <!-- Cropper Canvas -->
       <div class="flex-1 flex items-center justify-center bg-gray-100 dark:bg-gray-900 overflow-hidden p-4">
-        <div class="relative max-w-full max-h-full">
+        <div ref="cropperHost" class="relative w-full h-full min-w-0 min-h-0">
           <img ref="imgEl" :src="imgSrc" class="max-w-full max-h-full block" style="max-height: calc(100vh - 160px)" @load="initCropper" />
         </div>
       </div>
 
       <!-- Panel -->
-      <div class="w-72 flex-shrink-0 border-l border-gray-200 dark:border-gray-700 overflow-y-auto bg-white dark:bg-gray-900">
+      <div class="w-72 shrink-0 border-l border-gray-200 dark:border-gray-700 overflow-y-auto bg-white dark:bg-gray-900">
         <div class="p-4 space-y-5">
           <!-- 裁剪 -->
           <section>
@@ -51,7 +51,7 @@
               <select
                 v-model="selectedSizePresetId"
                 @change="applySizePreset(selectedSizePresetId)"
-                class="mt-0.5 w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 focus:outline-none focus:border-blue-500"
+                class="mt-0.5 w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 focus:outline-hidden focus:border-blue-500"
               >
                 <option value="">自定义</option>
                 <option v-for="preset in photoSizePresets" :key="preset.id" :value="preset.id">
@@ -62,11 +62,11 @@
             <div class="mt-2 flex gap-2">
               <div class="flex-1">
                 <label class="text-xs text-gray-500 dark:text-gray-400">宽 (px)</label>
-                <input v-model.number="outputWidth" type="number" min="1" class="mt-0.5 w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 focus:outline-none focus:border-blue-500" />
+                <input v-model.number="outputWidth" type="number" min="1" class="mt-0.5 w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 focus:outline-hidden focus:border-blue-500" />
               </div>
               <div class="flex-1">
                 <label class="text-xs text-gray-500 dark:text-gray-400">高 (px)</label>
-                <input v-model.number="outputHeight" type="number" min="1" class="mt-0.5 w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 focus:outline-none focus:border-blue-500" />
+                <input v-model.number="outputHeight" type="number" min="1" class="mt-0.5 w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 focus:outline-hidden focus:border-blue-500" />
               </div>
             </div>
           </section>
@@ -98,7 +98,7 @@
               <span>压缩设置</span>
             </h3>
             <label class="text-xs text-gray-500 dark:text-gray-400">目标体积 (KB，0=不限)</label>
-            <input v-model.number="maxSizeKB" type="number" min="0" class="mt-0.5 w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 focus:outline-none focus:border-blue-500" />
+            <input v-model.number="maxSizeKB" type="number" min="0" class="mt-0.5 w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 focus:outline-hidden focus:border-blue-500" />
             <label class="text-xs text-gray-500 dark:text-gray-400 mt-2 block">质量: {{ quality }}%</label>
             <input v-model.number="quality" type="range" min="1" max="100" class="w-full mt-0.5" />
           </section>
@@ -119,7 +119,8 @@
             </div>
           </section>
 
-          <button @click="process" :disabled="processing" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white rounded-lg font-medium transition-colors">
+          <p v-if="errorMessage" role="alert" class="text-sm text-red-600 dark:text-red-400">{{ errorMessage }}</p>
+          <button @click="process" :disabled="processing || !cropperReady" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white rounded-lg font-medium transition-colors">
             {{ processing ? '处理中...' : '立即处理' }}
           </button>
         </div>
@@ -132,14 +133,16 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import Cropper from 'cropperjs'
-import 'cropperjs/dist/cropper.css'
 import { useImageStore } from '@/stores/imageStore'
 import { processImage } from '@/utils/api'
 import { formatSize } from '@/utils/format'
 import { findPhotoSizePreset, formatPhotoSizeLabel, getPhotoSizeRatio, photoSizePresets } from '@/utils/photoSizes'
-import { Crop, FileImage, Minimize2, RotateCw } from 'lucide-vue-next'
+import { Crop, FileImage, Minimize2, RotateCw } from '@lucide/vue'
 const store = useImageStore()
 const imgEl = ref<HTMLImageElement>()
+const cropperHost = ref<HTMLDivElement>()
+const cropperReady = ref(false)
+const errorMessage = ref('')
 const imgSrc = ref('')
 const processing = ref(false)
 const processedBlob = ref<Blob | null>(null)
@@ -152,6 +155,7 @@ const outputWidth = ref(0)
 const outputHeight = ref(0)
 const selectedSizePresetId = ref('')
 let cropper: Cropper | null = null
+let cropperResizeObserver: ResizeObserver | null = null
 
 // Compression
 const quality = ref(85)
@@ -181,33 +185,132 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  cropperResizeObserver?.disconnect()
   cropper?.destroy()
+  cropper = null
   if (imgSrc.value) URL.revokeObjectURL(imgSrc.value)
 })
 
-function initCropper() {
-  if (!imgEl.value) return
+async function initCropper() {
+  if (!imgEl.value || !cropperHost.value) return
+  cropperResizeObserver?.disconnect()
   cropper?.destroy()
-  cropper = new Cropper(imgEl.value, {
-    aspectRatio: currentRatio.value,
-    viewMode: 1,
-    autoCropArea: 1,
-    ready() {
-      const data = cropper!.getCropBoxData()
-      outputWidth.value = Math.round(data.width)
-      outputHeight.value = Math.round(data.height)
-    },
-    cropend() {
-      const data = cropper!.getCropBoxData()
-      outputWidth.value = Math.round(data.width)
-      outputHeight.value = Math.round(data.height)
-    },
-  })
+  cropperReady.value = false
+  errorMessage.value = ''
+  const instance = new Cropper(imgEl.value, { container: cropperHost.value })
+  cropper = instance
+  const image = instance.getCropperImage()!
+  const selection = instance.getCropperSelection()!
+  image.rotatable = true
+  image.scalable = true
+  image.translatable = false
+  image.initialFit = 'contain'
+  selection.precise = true
+  selection.aspectRatio = currentRatio.value ?? NaN
+  try {
+    await image.$ready()
+    if (cropper !== instance || !cropperHost.value?.isConnected) return
+    centerImage()
+    fitSelection()
+    let resizing = false
+    const relativeCrop = () => {
+      const bounds = imageBounds()!
+      return { x: (selection.x - bounds.x) / bounds.width, y: (selection.y - bounds.y) / bounds.height,
+        width: selection.width / bounds.width, height: selection.height / bounds.height }
+    }
+    let crop = relativeCrop()
+    selection.addEventListener('change', (event) => {
+      if (resizing) return
+      const detail = (event as CustomEvent<{ x: number; y: number; width: number; height: number }>).detail
+      const bounds = imageBounds()
+      if (!bounds) return
+      // Keep the selection inside the visible image, including after rotation.
+      const tolerance = 0.5
+      if (detail.x < bounds.x - tolerance || detail.y < bounds.y - tolerance ||
+          detail.x + detail.width > bounds.x + bounds.width + tolerance ||
+          detail.y + detail.height > bounds.y + bounds.height + tolerance) {
+        event.preventDefault()
+        return
+      }
+      crop = { x: (detail.x - bounds.x) / bounds.width, y: (detail.y - bounds.y) / bounds.height,
+        width: detail.width / bounds.width, height: detail.height / bounds.height }
+      if (!selectedSizePresetId.value) {
+        const scale = imageScale()
+        outputWidth.value = Math.max(1, Math.round(detail.width / scale))
+        outputHeight.value = Math.max(1, Math.round(detail.height / scale))
+      }
+    })
+    cropperReady.value = true
+    const canvas = instance.getCropperCanvas()!
+    let previousWidth = canvas.clientWidth
+    let previousHeight = canvas.clientHeight
+    cropperResizeObserver = new ResizeObserver(() => {
+      const width = canvas.clientWidth, height = canvas.clientHeight
+      if (!width || !height || (width === previousWidth && height === previousHeight)) return
+      previousWidth = width
+      previousHeight = height
+      // Resize the preview without changing the crop in source coordinates or
+      // the user's requested export dimensions.
+      resizing = true
+      const output = [outputWidth.value, outputHeight.value] as const
+      centerImage()
+      const after = imageBounds()!
+      selection.$change(after.x + crop.x * after.width, after.y + crop.y * after.height,
+        crop.width * after.width, crop.height * after.height)
+      ;[outputWidth.value, outputHeight.value] = output
+      resizing = false
+    })
+    cropperResizeObserver.observe(canvas)
+  } catch (error) {
+    errorMessage.value = error instanceof Error ? error.message : '无法加载图片'
+  }
+}
+
+function centerImage() {
+  const image = cropper?.getCropperImage()
+  if (!image) return
+  // Cropper's $center uses $move, which is disabled by translatable=false.
+  // Allow programmatic centering while keeping mouse image dragging disabled.
+  const translatable = image.translatable
+  image.translatable = true
+  image.$center('contain')
+  image.translatable = translatable
+}
+
+function imageScale() {
+  const matrix = cropper?.getCropperImage()?.$getTransform()
+  return matrix ? Math.hypot(matrix[0]!, matrix[1]!) || 1 : 1
+}
+
+function imageBounds() {
+  const image = cropper?.getCropperImage()?.getBoundingClientRect()
+  const canvas = cropper?.getCropperCanvas()?.getBoundingClientRect()
+  if (!image || !canvas) return null
+  return { x: image.left - canvas.left, y: image.top - canvas.top, width: image.width, height: image.height }
+}
+
+function fitSelection() {
+  const bounds = imageBounds()
+  const selection = cropper?.getCropperSelection()
+  if (!bounds || !selection) return
+  let { width, height } = bounds
+  const ratio = currentRatio.value
+  if (ratio) {
+    if (width / height > ratio) width = height * ratio
+    else height = width / ratio
+  }
+  selection.$change(bounds.x + (bounds.width - width) / 2, bounds.y + (bounds.height - height) / 2, width, height)
+  if (!selectedSizePresetId.value) {
+    outputWidth.value = Math.max(1, Math.round(width / imageScale()))
+    outputHeight.value = Math.max(1, Math.round(height / imageScale()))
+  }
 }
 
 function setRatio(ratio: number | undefined) {
   currentRatio.value = ratio
-  cropper?.setAspectRatio(ratio ?? NaN)
+  const selection = cropper?.getCropperSelection()
+  if (selection) selection.aspectRatio = ratio ?? NaN
+  fitSelection()
 }
 
 function applySizePreset(presetId: string) {
@@ -220,54 +323,42 @@ function applySizePreset(presetId: string) {
 }
 
 function rotate(deg: number) {
-  cropper?.rotate(deg)
+  const image = cropper?.getCropperImage()
+  image?.$rotate(`${deg}deg`)
+  centerImage()
+  fitSelection()
 }
 
 function flip(dir: 'h' | 'v') {
-  if (!cropper) return
-  const data = cropper.getData()
-  if (dir === 'h') cropper.scaleX(data.scaleX === -1 ? 1 : -1)
-  else cropper.scaleY(data.scaleY === -1 ? 1 : -1)
+  const image = cropper?.getCropperImage()
+  if (!image) return
+  // Flip in screen coordinates, even after a quarter-turn rotation.
+  const [a, b, c, d, e, f] = image.$getTransform() as [number, number, number, number, number, number]
+  image.$setTransform(dir === 'h' ? -a : a, dir === 'v' ? -b : b,
+    dir === 'h' ? -c : c, dir === 'v' ? -d : d, e, f)
 }
 
 async function process() {
-  if (!store.currentFile || !cropper) return
+  const selection = cropper?.getCropperSelection()
+  if (!store.currentFile || !selection || !cropperReady.value) return
   processing.value = true
   processedBlob.value = null
+  processedSize.value = 0
+  errorMessage.value = ''
 
   try {
-    const cropData = cropper.getData(true)
-    const rotateDeg = Math.round(cropData.rotate ?? 0)
-    const isRightAngle = rotateDeg % 90 === 0
-
-    // For arbitrary (non-90°) rotation or any flip, bake the transform into
-    // the image pixels via Canvas first so the backend only needs to crop.
-    // This guarantees WYSIWYG because the backend receives the exact visual
-    // canvas the user sees in cropperjs.
-    let fileToSend: File | Blob = store.currentFile
-    let cropX = Math.round(cropData.x)
-    let cropY = Math.round(cropData.y)
-    let cropW = Math.round(cropData.width)
-    let cropH = Math.round(cropData.height)
-
-    if (!isRightAngle || cropData.scaleX === -1 || cropData.scaleY === -1) {
-      const baked = await bakeTransform(store.currentFile, cropData)
-      fileToSend = baked.file
-      cropX = baked.cropX
-      cropY = baked.cropY
-      cropW = baked.cropW
-      cropH = baked.cropH
-    }
-
+    // Export at source resolution, not CSS preview resolution. PNG avoids a
+    // lossy intermediate encode. The backend only resizes/converts/compresses;
+    // rotation, flip and crop are already represented by Cropper's canvas.
+    const canvas = await selection.$toCanvas({
+      width: Math.max(1, Math.round(selection.width / imageScale())),
+      height: Math.max(1, Math.round(selection.height / imageScale())),
+    })
+    const cropped = await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('无法导出裁剪区域')), 'image/png')
+    })
     const blob = await processImage({
-      file: fileToSend as File,
-      cropX,
-      cropY,
-      cropW,
-      cropH,
-      rotate: isRightAngle ? rotateDeg : 0,
-      flipH: isRightAngle && cropData.scaleX === -1,
-      flipV: isRightAngle && cropData.scaleY === -1,
+      file: new File([cropped], 'crop.png', { type: 'image/png' }),
       outputWidth: outputWidth.value || undefined,
       outputHeight: outputHeight.value || undefined,
       format: format.value,
@@ -276,87 +367,11 @@ async function process() {
     })
     processedBlob.value = blob
     processedSize.value = blob.size
-  } catch (e) {
-    console.error(e)
-    alert('处理失败，请重试')
+  } catch (error) {
+    errorMessage.value = error instanceof Error ? error.message : '处理失败，请重试'
   } finally {
     processing.value = false
   }
-}
-
-/**
- * Bake cropperjs rotation/flip into a new image via Canvas, and remap the
- * crop rectangle from the original image coordinate space to the baked
- * canvas coordinate space.
- */
-async function bakeTransform(
-  sourceFile: File,
-  cropData: Cropper.Data,
-): Promise<{ file: File; cropX: number; cropY: number; cropW: number; cropH: number }> {
-  const img = await loadImage(sourceFile)
-  const rad = ((cropData.rotate ?? 0) * Math.PI) / 180
-  const cos = Math.cos(rad)
-  const sin = Math.sin(rad)
-
-  // Bounding box of the rotated image
-  const w = img.naturalWidth
-  const h = img.naturalHeight
-  const newW = Math.ceil(w * Math.abs(cos) + h * Math.abs(sin))
-  const newH = Math.ceil(w * Math.abs(sin) + h * Math.abs(cos))
-
-  const canvas = document.createElement('canvas')
-  canvas.width = newW
-  canvas.height = newH
-  const ctx = canvas.getContext('2d')!
-
-  // Move origin to canvas center, apply rotation + flip, draw image centered
-  ctx.translate(newW / 2, newH / 2)
-  ctx.rotate(rad)
-  ctx.scale(cropData.scaleX ?? 1, cropData.scaleY ?? 1)
-  ctx.drawImage(img, -w / 2, -h / 2)
-
-  // Map crop rect from original image space to baked canvas space
-  const cx = cropData.x + cropData.width / 2
-  const cy = cropData.y + cropData.height / 2
-  const rx = cx * cos + cy * sin
-  const ry = -cx * sin + cy * cos
-  const scaleX = cropData.scaleX ?? 1
-  const scaleY = cropData.scaleY ?? 1
-
-  const bakedCx = newW / 2 + rx * scaleX
-  const bakedCy = newH / 2 + ry * scaleY
-  const bakedW = cropData.width * Math.abs(scaleX)
-  const bakedH = cropData.height * Math.abs(scaleY)
-
-  const cropX = Math.max(0, Math.round(bakedCx - bakedW / 2))
-  const cropY = Math.max(0, Math.round(bakedCy - bakedH / 2))
-  const cropW = Math.min(newW - cropX, Math.round(bakedW))
-  const cropH = Math.min(newH - cropY, Math.round(bakedH))
-
-  const blob = await new Promise<Blob | null>((resolve) =>
-    canvas.toBlob((b) => resolve(b), sourceFile.type || 'image/png'),
-  )
-  if (!blob) throw new Error('Canvas toBlob failed')
-
-  const name = sourceFile.name.replace(/\.[^.]+$/, '') + '_baked.' + (sourceFile.type.split('/')[1] || 'png')
-  const file = new File([blob], name, { type: blob.type })
-  return { file, cropX, cropY, cropW, cropH }
-}
-
-function loadImage(file: File): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(file)
-    const img = new Image()
-    img.onload = () => {
-      URL.revokeObjectURL(url)
-      resolve(img)
-    }
-    img.onerror = () => {
-      URL.revokeObjectURL(url)
-      reject(new Error('Failed to load image'))
-    }
-    img.src = url
-  })
 }
 
 function download() {

@@ -56,7 +56,7 @@
         </div>
       </div>
 
-      <div class="w-80 flex-shrink-0 border-l border-gray-200 dark:border-gray-700 overflow-y-auto bg-white dark:bg-gray-900">
+      <div class="w-80 shrink-0 border-l border-gray-200 dark:border-gray-700 overflow-y-auto bg-white dark:bg-gray-900">
         <div class="p-4 space-y-5">
           <section>
             <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">视频信息</h3>
@@ -70,7 +70,7 @@
           <section>
             <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">压缩设置</h3>
             <label class="text-xs text-gray-500 dark:text-gray-400">目标体积 (MB，0=不限)</label>
-            <input v-model.number="maxSizeMB" type="number" min="0" step="1" class="mt-0.5 w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 focus:outline-none focus:border-blue-500" />
+            <input v-model.number="maxSizeMB" type="number" min="0" step="1" class="mt-0.5 w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 focus:outline-hidden focus:border-blue-500" />
             <p class="mt-1 text-[11px] text-gray-400 dark:text-gray-500">设置后将优先按目标体积估算码率压缩。</p>
 
             <label class="text-xs text-gray-500 dark:text-gray-400 mt-3 block">

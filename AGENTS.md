@@ -29,13 +29,8 @@ Vue 3 frontend (frontend/)
 
 ### Image processing pipeline (Go)
 
-The `processor.Process` function applies operations in fixed order:
-1. **Crop** — uses bimg extract area, disables auto-rotate during crop
-2. **Rotate** — normalizes angle to 0/90/180/270
-3. **Flip** — horizontal (flop) then vertical (flip)
-4. **Resize** — only if output dimensions specified; uses `Force` when both W/H given
-5. **Format + Quality conversion** — via bimg type conversion
-6. **MaxSizeKB iteration** — if target size is set, re-encodes from the post-resize buffer with decreasing quality (steps of 5, minimum quality 10)
+The Go API applies EXIF auto-orientation → rotate → flip → crop → resize → format/quality conversion → target-size iteration.
+The Editor uses CropperJS 2 to export its selection at source resolution as lossless PNG, including rotation and flip. It sends no crop/transform parameters to Go, which only resizes and encodes this result. Direct API clients can still use the Go crop/transform pipeline.
 
 ### Video processing pipeline (Go)
 
@@ -47,25 +42,22 @@ The `processor.Process` function applies operations in fixed order:
 ## Commands
 
 ```bash
-# Install (libvips must be installed first: brew install vips)
-npm install --legacy-peer-deps
-
-# Compile Go sidecar → sidecar-bin/picpress
-npm run build:go              # native arch
-npm run build:go:arm64        # force arm64
-npm run build:go:x64          # force amd64
-
-# Development (starts Electron + Vite HMR for renderer)
-npm run dev
-
-# Build Electron + Vue (no Go compilation)
-npm run build
-
-# Package for current platform (compiles Go + builds Electron + runs electron-builder)
-npm run dist
-npm run dist:mac              # macOS DMG + ZIP (arm64)
-npm run dist:win              # Windows NSIS (x64)
-npm run dist:linux            # Linux AppImage + deb (x64)
+# Node 24 LTS (>=24.20), Go 1.27.2, libvips required
+npm ci
+npm start                    # Forge: compile Go + start Electron/Vite
+npm run typecheck            # Electron/config and Vue types
+npm run build:web            # standalone renderer build
+npm run build:go             # optional standalone Go compilation
+npm run package              # Forge application directory in out/
+npm run make                 # Forge installers in out/make/
+npm run dist:mac             # macOS arm64 DMG + ZIP (on arm64 Mac)
+npm run dist:mac:x64          # macOS x64 (on Intel Mac)
+npm run dist:win             # Windows x64 Squirrel
+npm run dist:linux           # Linux x64 DEB/RPM, use --targets for one maker
+npx playwright install chromium
+npm test                     # browser crop pixel regression tests
+npm run smoke:package        # packaged health/image/MP4/WebM smoke test
+npm run smoke:electron       # packaged desktop UI/lifecycle test (requires display)
 ```
 
 ## Project layout
@@ -77,7 +69,7 @@ npm run dist:linux            # Linux AppImage + deb (x64)
 | `frontend/src/` | Vue 3 app: views (Home, Editor, Batch, Video), stores, utils |
 | `internal/handler/` | Go HTTP handlers (parse form, validate, delegate to processor) |
 | `internal/processor/` | Go image/video processing logic (bimg + ffmpeg) |
-| `scripts/` | `build-go.mjs` (compile Go binary), `verify-sidecar.mjs` (electron-builder afterPack hook) |
+| `scripts/` | `build-go.mjs` (compile Go binary), `prepare-resources.mjs` and `verify-sidecar.mjs` (Forge resource hooks) |
 | `build/` | App icons and macOS entitlements plist |
 | `sidecar-bin/` | Compiled Go binary output (gitignored) |
 
@@ -88,5 +80,11 @@ npm run dist:linux            # Linux AppImage + deb (x64)
 - **API base URL**: in Electron, the preload script reads `--api-port=N` from `process.argv` and exposes it via `contextBridge`. The `api.ts` utility checks `window.electronAPI?.apiPort` and falls back to `''` (Vite dev-server proxy) when running in a browser.
 - **ffmpeg/ffprobe resolution**: in development, uses the `ffmpeg-static` / `ffprobe-static` npm packages. In production, the Go sidecar reads `FFMPEG_PATH` / `FFPROBE_PATH` env vars set by Electron's `startSidecar()`.
 - **CGO required**: the Go sidecar depends on `bimg` (C bindings to libvips), so cross-compilation is not supported. macOS and Windows builds must happen on their respective OS.
-- **macOS packaging**: the `verify-sidecar.mjs` afterPack hook uses `dylibbundler` to bundle libvips `.dylib` files into the app bundle, then verifies no external dylib references remain.
-- **CI**: GitHub Actions workflow in `.github/workflows/release.yml` triggers on `v*.*.*` tags, builds on macos-14 (arm64), windows-latest, ubuntu-22.04 in parallel, then creates a GitHub Release with all artifacts.
+- **Forge**: `forge.config.ts` configures Vite main/preload/renderer builds. Main/preload output is CommonJS (`.vite/build/main.cjs`, `preload.cjs`); config files are ESM. All dependencies and the lockfile live at the root.
+- **macOS packaging**: the `verify-sidecar.mjs` Packager `afterCopyExtraResources` hook (before final app signing) uses `dylibbundler` to bundle libvips `.dylib` files into the app bundle, then verifies no external dylib references remain.
+- **HEIF/AVIF**: `prepare-resources.mjs` also collects loadable HEIF modules and codec dependencies on macOS/Windows. Packaged sidecars set `VIPSHOME` and `LIBHEIF_PLUGIN_PATH` to bundled locations. Fedora requires `vips-heif`; Windows builds need MinGW `libheif` explicitly.
+- **Cropper geometry**: keep `selection.precise = true` to preserve source pixels; programmatic centering temporarily enables `image.translatable` because `$center()` uses `$move()`. A ResizeObserver refits the preview while preserving the source crop and export dimensions.
+- **CI**: GitHub Actions workflow in `.github/workflows/release.yml` triggers on `v*.*.*` tags, builds on macos-14 (arm64), windows-latest, ubuntu-22.04 (DEB), and Fedora 44 (RPM), then creates a GitHub Release with all artifacts.
+
+- **Upgrade constraint**: TypeScript is pinned to 6.0.3 because vue-tsc 3.3.13 cannot load the TypeScript 7 compiler internals. Do not bypass this failure with skipLibCheck or legacy-peer-deps.
+- **Batch UI**: calls the single-image API sequentially and creates ZIPs with JSZip; `/api/batch` is a separate server-side API.

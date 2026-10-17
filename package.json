@@ -1,39 +1,76 @@
 {
   "name": "picpress-media",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "PicPress Media — Image & Video Desktop App",
   "author": {
     "name": "kk",
     "email": "1990836114@qq.com"
   },
-  "main": "dist-electron/main/index.js",
+  "main": ".vite/build/main.cjs",
   "scripts": {
-    "dev": "electron-vite dev",
-    "build": "electron-vite build",
+    "start": "electron-forge start",
+    "dev": "electron-forge start",
+    "dev:web": "vite --config vite.renderer.config.ts",
+    "build:web": "vite build --config vite.renderer.config.ts",
+    "typecheck": "tsc --noEmit && vue-tsc --noEmit -p frontend/tsconfig.app.json",
+    "test": "playwright test",
     "build:go": "node scripts/build-go.mjs",
     "build:go:arm64": "node scripts/build-go.mjs --arch arm64",
     "build:go:x64": "node scripts/build-go.mjs --arch x64",
-    "dist": "npm run build:go && npm run build && electron-builder --config electron-builder.config.ts",
-    "dist:mac": "npm run build:go:arm64 && npm run build && electron-builder --config electron-builder.config.ts --mac",
-    "dist:mac:arm64": "npm run build:go:arm64 && npm run build && electron-builder --config electron-builder.config.ts --mac --arm64",
-    "dist:mac:x64": "npm run build:go:x64 && npm run build && electron-builder --config electron-builder.config.ts --mac --x64",
-    "dist:win": "npm run build:go && npm run build && electron-builder --config electron-builder.config.ts --win",
-    "dist:linux": "npm run build:go && npm run build && electron-builder --config electron-builder.config.ts --linux",
-    "postinstall": "electron-builder install-app-deps"
+    "package": "electron-forge package",
+    "make": "electron-forge make",
+    "build": "npm run typecheck && electron-forge package",
+    "dist": "npm run typecheck && electron-forge make",
+    "dist:mac": "npm run dist -- --platform=darwin --arch=arm64",
+    "dist:mac:arm64": "npm run dist -- --platform=darwin --arch=arm64",
+    "dist:mac:x64": "npm run dist -- --platform=darwin --arch=x64",
+    "dist:win": "npm run dist -- --platform=win32 --arch=x64",
+    "dist:linux": "npm run dist -- --platform=linux --arch=x64",
+    "smoke:package": "node scripts/smoke-package.mjs",
+    "smoke:electron": "node scripts/smoke-electron.mjs",
+    "postinstall": "node node_modules/electron/install.js"
   },
   "dependencies": {
-    "ffmpeg-static": "^5.3.0",
-    "ffprobe-static": "^3.1.0"
+    "electron-squirrel-startup": "1.0.1",
+    "ffmpeg-static": "5.3.0",
+    "ffprobe-static": "3.1.0"
   },
   "devDependencies": {
-    "@swc/core": "^1.15.46",
-    "@types/node": "^22.20.1",
-    "@vitejs/plugin-vue": "^6.0.8",
-    "electron": "^42.7.0",
-    "electron-builder": "^26.15.7",
-    "electron-vite": "^4.0.1",
-    "typescript": "^5.9.3",
-    "vite": "^7.3.6",
-    "vue": "^3.5.40"
+    "@electron-forge/cli": "8.0.1",
+    "@electron-forge/maker-deb": "8.0.1",
+    "@electron-forge/maker-dmg": "8.0.1",
+    "@electron-forge/maker-rpm": "8.0.1",
+    "@electron-forge/maker-squirrel": "8.0.1",
+    "@electron-forge/maker-zip": "8.0.1",
+    "@electron-forge/plugin-vite": "8.0.1",
+    "@electron-forge/shared-types": "8.0.1",
+    "@lucide/vue": "1.59.0",
+    "@playwright/test": "1.64.1",
+    "@tailwindcss/vite": "4.3.3",
+    "@types/electron-squirrel-startup": "1.0.2",
+    "@types/node": "24.19.2",
+    "@vitejs/plugin-vue": "6.0.10",
+    "cropperjs": "2.3.1",
+    "electron": "44.9.0",
+    "jszip": "3.10.2",
+    "pinia": "4.1.0",
+    "tailwindcss": "4.3.3",
+    "typescript": "6.0.3",
+    "vite": "8.3.4",
+    "vue": "3.5.44",
+    "vue-router": "5.4.0",
+    "vue-tsc": "3.3.13"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=24.20.0 <25"
+  },
+  "allowScripts": {
+    "ffmpeg-static@5.3.0": true,
+    "electron-winstaller@5.4.4": true,
+    "fs-xattr@0.3.1": true,
+    "macos-alias@0.2.12": true,
+    "electron@44.9.0": true,
+    "fsevents@2.3.3": true
   }
 }

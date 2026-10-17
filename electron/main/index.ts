@@ -1,8 +1,9 @@
 import { app, BrowserWindow, dialog, nativeImage, Menu } from 'electron'
 import { join, resolve } from 'path'
 import { startSidecar, waitForReady, killSidecar } from './sidecar'
+import squirrelStartup from 'electron-squirrel-startup'
 
-// In dev:  __dirname = <project>/dist-electron/main  → root = ../..
+// In dev:  __dirname = <project>/.vite/build  → root = ../..
 // In prod: __dirname = inside app bundle resources
 const projectRoot = app.isPackaged ? process.resourcesPath : resolve(__dirname, '../..')
 
@@ -40,7 +41,7 @@ function createWindow(): void {
       // Pass apiPort as a CLI argument so the preload script can read it
       // synchronously without any IPC round-trip.
       additionalArguments: [`--api-port=${apiPort}`],
-      preload: join(__dirname, '../preload/index.js'),
+      preload: join(__dirname, 'preload.cjs'),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false,
@@ -51,11 +52,10 @@ function createWindow(): void {
   })
 
   // Load the frontend
-  if (app.isPackaged) {
-    mainWindow.loadFile(join(__dirname, '../../dist/renderer/index.html'))
+  if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
+    mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL)
   } else {
-    // electron-vite sets ELECTRON_RENDERER_URL in dev mode
-    mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'] ?? 'http://localhost:5173')
+    mainWindow.loadFile(join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`))
   }
 
   mainWindow.once('ready-to-show', () => {
@@ -80,7 +80,7 @@ async function bootstrap(): Promise<void> {
   // Set Dock icon before anything else (macOS only, works in dev mode too)
   if (process.platform === 'darwin') {
     const icon = getAppIcon()
-    if (!icon.isEmpty()) app.dock.setIcon(icon)
+    if (!icon.isEmpty()) app.dock?.setIcon(icon)
   }
 
   try {
@@ -98,12 +98,16 @@ async function bootstrap(): Promise<void> {
   createWindow()
 }
 
-app.whenReady().then(bootstrap)
+// Squirrel invokes the executable during installation and removal.
+// Exit before starting the sidecar or creating a window for these events.
+if (squirrelStartup) app.quit()
+else app.whenReady().then(bootstrap)
 
 // ── App lifecycle ─────────────────────────────────────────────────────────────
 
 // macOS: clicking the Dock icon should show the window if it was hidden
 app.on('activate', () => {
+  if (squirrelStartup || !apiPort || isQuitting) return
   if (mainWindow) {
     mainWindow.show()
   } else {

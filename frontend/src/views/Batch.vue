@@ -49,7 +49,7 @@
     <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex flex-wrap gap-4 items-end">
       <div>
         <label class="text-xs text-gray-500 dark:text-gray-400 block mb-1">比例</label>
-        <select v-model="batchRatio" class="px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 focus:outline-none">
+        <select v-model="batchRatio" class="px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 focus:outline-hidden">
           <option :value="undefined">自由</option>
           <option :value="1">1:1</option>
           <option :value="4/3">4:3</option>
@@ -62,7 +62,7 @@
         <select
           v-model="selectedSizePresetId"
           @change="applyBatchSizePreset(selectedSizePresetId)"
-          class="w-64 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 focus:outline-none"
+          class="w-64 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 focus:outline-hidden"
         >
           <option value="">自定义</option>
           <option v-for="preset in photoSizePresets" :key="preset.id" :value="preset.id">
@@ -72,15 +72,15 @@
       </div>
       <div>
         <label class="text-xs text-gray-500 dark:text-gray-400 block mb-1">输出宽度 (px)</label>
-        <input v-model.number="batchWidth" type="number" min="1" class="w-24 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 focus:outline-none" />
+        <input v-model.number="batchWidth" type="number" min="1" class="w-24 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 focus:outline-hidden" />
       </div>
       <div>
         <label class="text-xs text-gray-500 dark:text-gray-400 block mb-1">输出高度 (px)</label>
-        <input v-model.number="batchHeight" type="number" min="1" class="w-24 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 focus:outline-none" />
+        <input v-model.number="batchHeight" type="number" min="1" class="w-24 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 focus:outline-hidden" />
       </div>
       <div>
         <label class="text-xs text-gray-500 dark:text-gray-400 block mb-1">目标体积 (KB，0=不限)</label>
-        <input v-model.number="batchMaxKB" type="number" min="0" class="w-24 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 focus:outline-none" />
+        <input v-model.number="batchMaxKB" type="number" min="0" class="w-24 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 focus:outline-hidden" />
         <p class="mt-1 text-[11px] text-gray-400 dark:text-gray-500">设置后将优先满足体积限制。</p>
       </div>
       <div>
@@ -101,7 +101,7 @@
       </div>
       <div>
         <label class="text-xs text-gray-500 dark:text-gray-400 block mb-1">格式</label>
-        <select v-model="batchFormat" class="px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 focus:outline-none">
+        <select v-model="batchFormat" class="px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 focus:outline-hidden">
           <option value="jpg">JPG</option>
           <option value="png">PNG</option>
           <option value="webp">WebP</option>
@@ -124,7 +124,7 @@
         <div
           v-for="(item, i) in items"
           :key="i"
-          class="relative rounded-xl overflow-hidden border-2 bg-white dark:bg-gray-800 shadow-sm cursor-pointer transition-all"
+          class="relative rounded-xl overflow-hidden border-2 bg-white dark:bg-gray-800 shadow-xs cursor-pointer transition-all"
           :class="selectedIndices.has(i) ? 'border-blue-500 dark:border-blue-400' : 'border-gray-200 dark:border-gray-700'"
           @click="toggleSelect(i, $event)"
         >
@@ -146,7 +146,7 @@
                 <template v-else>失败</template>
               </span>
               <button v-if="item.status === 'done'" @click.stop="downloadOne(item, i)" class="text-xs text-blue-600 dark:text-blue-400 hover:underline">下载</button>
-              <svg v-if="selectedIndices.has(i)" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-blue-500 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              <svg v-if="selectedIndices.has(i)" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-blue-500 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
             </div>
           </div>
         </div>

@@ -3,11 +3,8 @@ import { spawn, ChildProcess } from 'child_process'
 import { join } from 'path'
 import { createServer } from 'net'
 import { existsSync, chmodSync } from 'fs'
-import { createRequire } from 'module'
-
-// sidecar.ts is bundled as CJS by electron-vite, but we use createRequire
-// for future-proof ESM compatibility when resolving ffmpeg-static/ffprobe-static.
-const require = createRequire(import.meta.url)
+import ffmpegPath from 'ffmpeg-static'
+import ffprobe from 'ffprobe-static'
 
 let sidecarProcess: ChildProcess | null = null
 let sidecarStartupError: Error | null = null
@@ -68,7 +65,7 @@ function getFfmpegPath(): string {
   }
   // Dev: use ffmpeg-static from node_modules
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const p = require('ffmpeg-static') as string | null
+  const p = ffmpegPath
   if (!p) throw new Error('ffmpeg-static returned null')
   return p
 }
@@ -91,7 +88,7 @@ function getFfprobePath(): string {
   }
   // Dev: use ffprobe-static from node_modules
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const p = (require('ffprobe-static') as { path: string }).path
+  const p = ffprobe.path
   if (!p) throw new Error('ffprobe-static returned null')
   return p
 }
@@ -131,6 +128,10 @@ export async function startSidecar(): Promise<number> {
     PORT: String(port),
     FFMPEG_PATH: ffmpegPath,
     FFPROBE_PATH: ffprobePath,
+  }
+  if (app.isPackaged && process.platform !== 'linux') {
+    spawnEnv.VIPSHOME = join(process.resourcesPath, 'bin')
+    spawnEnv.LIBHEIF_PLUGIN_PATH = join(process.resourcesPath, 'bin', 'lib', 'libheif')
   }
   if (process.platform === 'win32' && app.isPackaged) {
     const binDir = join(process.resourcesPath, 'bin')
@@ -213,13 +214,16 @@ export async function killSidecar(): Promise<void> {
   proc.kill('SIGTERM')
 
   // Wait for exit, or force-kill after 5 seconds
-  const timeout = new Promise<void>((resolve) => setTimeout(resolve, 5_000))
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const timeout = new Promise<void>((resolve) => { timer = setTimeout(resolve, 5_000) })
   const exited = sidecarExitPromise ?? Promise.resolve()
 
   await Promise.race([exited, timeout])
+  clearTimeout(timer)
 
-  if (!proc.killed) {
+  if (proc.exitCode === null && proc.signalCode === null) {
     proc.kill('SIGKILL')
+    await exited
   }
 
   sidecarExitResolve = null

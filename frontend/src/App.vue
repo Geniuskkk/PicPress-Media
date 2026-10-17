@@ -4,7 +4,7 @@
       <!-- On macOS the traffic-light buttons (close/minimise/fullscreen) float over
            the window at x≈16 and span ~74 px. Add left padding so they don't overlap. -->
       <nav
-        class="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 py-3 flex items-center justify-between"
+        class="shrink-0 border-b border-gray-200 dark:border-gray-700 py-3 flex items-center justify-between"
         :class="isMacOS ? 'pl-24 pr-4' : 'px-4'"
         style="-webkit-app-region: drag; user-select: none;"
       >

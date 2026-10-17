@@ -7,9 +7,9 @@
 
 [![License: MIT + Commons Clause](https://img.shields.io/badge/License-MIT%20+%20Commons%20Clause-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey)](#下载--download)
-[![Go](https://img.shields.io/badge/Go-1.26+-00ADD8?logo=go)](https://go.dev)
+[![Go](https://img.shields.io/badge/Go-1.27+-00ADD8?logo=go)](https://go.dev)
 [![Vue](https://img.shields.io/badge/Vue-3-42b883?logo=vue.js)](https://vuejs.org)
-[![Electron](https://img.shields.io/badge/Electron-42-47848F?logo=electron)](https://www.electronjs.org)
+[![Electron](https://img.shields.io/badge/Electron-44-47848F?logo=electron)](https://www.electronjs.org)
 
 [中文](#中文) · [English](#english)
 
@@ -28,6 +28,12 @@ PicPress Media 是一款开源的跨平台桌面应用，基于 **Electron + Vue
 - 所有处理均在本地完成，文件不会上传到外部服务
 - 支持 macOS、Windows、Linux 三平台
 
+### v2.2.0 更新
+
+- 迁移至 Electron Forge 8，升级 Electron、Vue 和构建依赖，统一根目录依赖管理。
+- 升级 CropperJS 2，按原图分辨率导出裁剪结果，修复大图居中、旋转翻转及窗口缩放后的裁剪保持。
+- Windows 改用 Squirrel 安装包；Linux 提供 DEB/RPM；完善 HEIF/AVIF 插件打包与发布验证。
+
 ### 功能特性
 
 | 功能 | 说明 |
@@ -37,7 +43,7 @@ PicPress Media 是一款开源的跨平台桌面应用，基于 **Electron + Vue
 | 🗜 图片压缩 | 质量滑块 + 目标体积（KB）控制，自动降低质量以满足大小限制 |
 | 🎬 单视频压缩 | 单个视频文件压缩，支持 MP4 / WebM 输出 |
 | 🔄 格式转换 | 图片支持 JPG · PNG · WebP · AVIF |
-| ↻ 旋转 / 翻转 | 单图支持顺 / 逆时针 90° 旋转、水平 / 垂直翻转；任意角度旋转由前端 Canvas 烘焙后导出，所见即所得 |
+| ↻ 旋转 / 翻转 | 单图支持顺 / 逆时针 90° 旋转、水平 / 垂直翻转；裁剪与变换由前端按原图分辨率导出，所见即所得 |
 | 🌙 深色模式 | 深色 / 浅色一键切换，偏好持久化 |
 | 📦 ffmpeg 内置 | 安装包内已包含 ffmpeg，无需系统单独安装 |
 
@@ -47,9 +53,9 @@ PicPress Media 是一款开源的跨平台桌面应用，基于 **Electron + Vue
 
 | 平台 | 安装包格式 |
 |------|-----------|
-| macOS (Apple Silicon，Intel 可通过 Rosetta 2 运行) | `.dmg` / `.zip` |
-| Windows | `.exe`（NSIS 安装向导）|
-| Linux | `.AppImage` / `.deb` |
+| macOS (Apple Silicon arm64) | `.dmg` / `.zip` |
+| Windows | `Setup.exe`（Squirrel）|
+| Linux | `.deb` / `.rpm` |
 
 ### 快速开始
 
@@ -58,14 +64,9 @@ PicPress Media 是一款开源的跨平台桌面应用，基于 **Electron + Vue
 > 首次打开若提示「无法验证开发者」，请前往「系统设置 → 隐私与安全性」点击「仍要打开」。
 > 若提示文件已损坏，打开终端输入 xattr -cr /Applications/"PicPress Media.app"
 
-**Windows：** 双击 `.exe` 安装向导，按提示完成安装，在开始菜单或桌面快捷方式启动。
+**Windows：** 运行 `Setup.exe`，安装完成后从开始菜单启动。旧 NSIS 安装请先卸载，Squirrel 不会接管旧安装目录。
 
-**Linux：** AppImage 无需安装，赋予执行权限后直接运行：
-
-```bash
-chmod +x PicPress-Media-*.AppImage
-./PicPress-Media-*.AppImage
-```
+**Linux：** Ubuntu/Debian 使用 `sudo apt install ./picpress-media*.deb`，Fedora 使用 `sudo dnf install ./picpress-media*.rpm`，包管理器会安装 libvips 等运行依赖。
 
 ### 技术架构
 
@@ -94,7 +95,7 @@ GET /api/health
 ```
 
 ```json
-{"status":"ok","version":"v1.0.0"}
+{"status":"ok","version":"(devel)"}
 ```
 
 #### 处理单张图片
@@ -150,8 +151,8 @@ Content-Type: multipart/form-data
 
 **本地依赖：**
 
-- Go 1.26+
-- Node.js 20+
+- Go 1.27.2+
+- Node.js 24 LTS (24.20+)
 - libvips（macOS: `brew install vips`，Ubuntu: `apt install libvips-dev`）
 - macOS 打包额外需要 `dylibbundler`（`brew install dylibbundler`）
 
@@ -162,7 +163,7 @@ git clone https://github.com/Geniuskkk/PicPress-Media.git
 cd PicPress-Media
 
 # 安装 Node 依赖
-npm install --legacy-peer-deps
+npm ci
 
 # 编译 Go sidecar（产物在 sidecar-bin/picpress）
 npm run build:go
@@ -170,7 +171,7 @@ npm run build:go
 # 开发模式启动（Electron + HMR）
 npm run dev
 
-# 打包当前平台安装包（产物在 dist/）
+# 打包当前平台安装包（产物在 out/make/）
 npm run dist
 ```
 
@@ -178,11 +179,29 @@ npm run dist
 
 ```bash
 npm run dist:mac    # macOS DMG + ZIP
-npm run dist:win    # Windows NSIS
-npm run dist:linux  # AppImage + deb
+npm run dist:win    # Windows Squirrel
+npm run dist:linux  # DEB + RPM
 ```
 
-> 注意：macOS 和 Windows 安装包必须分别在对应系统上构建（CGO 依赖 libvips 不支持交叉编译）。当前 CI 发布的 macOS 安装包为 Apple Silicon arm64 构建，Intel Mac 可通过 Rosetta 2 运行。macOS 发布包还需要 `dylibbundler` 把 libvips 的动态库依赖一起打进 app。CI 构建使用 GitHub Actions 的多平台独立 jobs。
+> 注意：macOS 和 Windows 安装包必须分别在对应系统上构建（CGO 依赖 libvips 不支持交叉编译）。当前 CI 发布的 macOS 安装包为 Apple Silicon arm64 构建，Intel Mac 需要在 Intel 构建机上生成 x64 安装包。macOS 发布包还需要 `dylibbundler` 把 libvips 的动态库依赖一起打进 app。CI 构建使用 GitHub Actions 的多平台独立 jobs。
+
+### Forge 开发与验证
+
+依赖统一由根目录管理。`npm start`、`npm run package`、`npm run make` 会自动编译 Go sidecar；构建必须在与目标匹配的平台和架构执行。
+
+```bash
+npm run typecheck
+npm run build:web
+npx playwright install chromium
+npm test
+npm run make
+npm run smoke:package
+npm run smoke:electron
+```
+
+`package` 输出应用目录，`make` 输出 `out/make/` 下的安装包。独立浏览器开发可使用 `go run .` 和 `npm run dev:web`。
+
+TypeScript 暂固定 6.0.3：vue-tsc 3.3.13 不能调用 TypeScript 7 的内部编译器入口。迁移细节和验证范围见 [MIGRATION.md](MIGRATION.md)。
 
 ### 参与贡献
 
@@ -202,6 +221,12 @@ npm run dist:linux  # AppImage + deb
 
 PicPress Media is an open-source cross-platform desktop application built with **Electron + Vue 3 + Go**. It handles image processing and single-video compression entirely on your machine — nothing is uploaded to external services.
 
+### v2.2.0 Changes
+
+- Migrated to Electron Forge 8, updated Electron/Vue and build dependencies, and consolidated dependencies at the repository root.
+- Upgraded to CropperJS 2 with source-resolution crop export and fixes for large-image centering, transforms, and crop preservation during window resizing.
+- Switched Windows installers to Squirrel, provided DEB/RPM packages for Linux, and improved HEIF/AVIF plugin packaging and release checks.
+
 ### Features
 
 | Feature | Description |
@@ -211,7 +236,7 @@ PicPress Media is an open-source cross-platform desktop application built with *
 | 🗜 Image Compression | Quality slider plus target size in KB |
 | 🎬 Single Video Compression | Compress one video and export as MP4 or WebM |
 | 🔄 Format Convert | JPG / PNG / WebP / AVIF for images |
-| ↻ Rotate / Flip | 90° clockwise/counter-clockwise rotation plus horizontal/vertical flip; arbitrary angles are baked into the image by the frontend Canvas before export for true WYSIWYG |
+| ↻ Rotate / Flip | 90° clockwise/counter-clockwise rotation plus horizontal/vertical flip; crop and transforms are exported by the frontend at source resolution for WYSIWYG results |
 | 🌙 Dark Mode | Toggle dark and light theme with persisted preference |
 | 📦 Bundled ffmpeg | ffmpeg is included in the installer — no separate install needed |
 
@@ -221,9 +246,9 @@ Get the latest build from [Releases](https://github.com/Geniuskkk/PicPress-Media
 
 | Platform | Format |
 |----------|--------|
-| macOS (Apple Silicon, Intel via Rosetta 2) | `.dmg` / `.zip` |
-| Windows | `.exe` (NSIS installer) |
-| Linux | `.AppImage` / `.deb` |
+| macOS (Apple Silicon arm64) | `.dmg` / `.zip` |
+| Windows | `Setup.exe` (Squirrel) |
+| Linux | `.deb` / `.rpm` |
 
 ### Quick Start
 
@@ -231,14 +256,9 @@ Get the latest build from [Releases](https://github.com/Geniuskkk/PicPress-Media
 
 > If macOS shows "unidentified developer", go to **System Settings → Privacy & Security** and click **Open Anyway**.
 
-**Windows:** Run the `.exe` installer and follow the wizard.
+**Windows:** Run `Setup.exe`. Uninstall an older NSIS installation first; Squirrel uses its own installation directory.
 
-**Linux:** Make the AppImage executable and run it:
-
-```bash
-chmod +x PicPress-Media-*.AppImage
-./PicPress-Media-*.AppImage
-```
+**Linux:** Install the DEB with `sudo apt install ./picpress-media*.deb`, or the RPM on Fedora with `sudo dnf install ./picpress-media*.rpm`. The package manager installs libvips and other runtime dependencies.
 
 ### Architecture
 
@@ -315,8 +335,8 @@ Content-Type: multipart/form-data
 
 **Prerequisites:**
 
-- Go 1.26+
-- Node.js 20+
+- Go 1.27.2+
+- Node.js 24 LTS (24.20+)
 - libvips (macOS: `brew install vips`, Ubuntu: `apt install libvips-dev`)
 - `dylibbundler` for macOS packaging (`brew install dylibbundler`)
 
@@ -326,9 +346,9 @@ Content-Type: multipart/form-data
 git clone https://github.com/Geniuskkk/PicPress-Media.git
 cd PicPress-Media
 
-npm install --legacy-peer-deps
+npm ci
 npm run build:go   # compile Go sidecar → sidecar-bin/picpress
-npm run dev        # launch Electron in development mode
+npm run dev        # Forge builds the sidecar and launches Electron with HMR
 npm run dist       # package for the current platform
 ```
 
@@ -336,11 +356,11 @@ npm run dist       # package for the current platform
 
 ```bash
 npm run dist:mac    # macOS DMG + ZIP
-npm run dist:win    # Windows NSIS
-npm run dist:linux  # AppImage + deb
+npm run dist:win    # Windows Squirrel
+npm run dist:linux  # DEB + RPM
 ```
 
-> macOS and Windows packages must be built on their respective OS due to CGO (libvips). The current CI release publishes an Apple Silicon arm64 macOS build, and Intel Macs can run it through Rosetta 2. macOS release builds also need `dylibbundler` to bundle libvips dylibs into the app. CI uses GitHub Actions with separate jobs per platform.
+> macOS and Windows packages must be built on their respective OS due to CGO (libvips). The current CI release publishes an Apple Silicon arm64 macOS build, and Intel Macs require a separate x64 build on an Intel runner. macOS release builds also need `dylibbundler` to bundle libvips dylibs into the app. CI uses GitHub Actions with separate jobs per platform.
 
 ### Contributing
 

@@ -1,129 +1,46 @@
 name: Build & Release
-
 on:
   push:
-    tags:
-      - 'v*.*.*'
-
+    tags: ['v*.*.*']
+  workflow_dispatch:
 permissions:
   contents: read
-
 concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
-
 jobs:
-  # ────────────────────────────────────────────────
-  # macOS — arm64 only (macos-14, Apple Silicon)
-  # macos-13 (Intel) runners are retired by GitHub.
-  # Intel Mac users need a separate x64 build; Rosetta only runs x64 apps on Apple Silicon.
-  # ────────────────────────────────────────────────
   build-mac:
     runs-on: macos-14
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7.0.1
       - uses: ./.github/actions/setup-env
-
-      - name: Install libvips and dylibbundler
-        run: brew install vips dylibbundler
-
-      - name: Build Go sidecar (arm64)
-        run: npm run build:go:arm64
-        env:
-          CGO_ENABLED: '1'
-
-      - name: Build Electron (macOS arm64)
-        run: npm run build && npx electron-builder --config electron-builder.config.ts --mac dmg zip --arm64 --publish never
-        env:
-          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
-          CGO_ENABLED: '1'
-
-      - name: Smoke test packaged macOS sidecar
+      - run: brew install vips dylibbundler
+      - run: npm run typecheck
+      - run: npx playwright install chromium
+      - run: npm test
+      - run: npm run make -- --platform=darwin --arch=arm64
+      - run: npm run smoke:package
+      - run: npm run smoke:electron
+      - name: Verify bundled signatures
         run: |
-          APP="dist/mac-arm64/PicPress Media.app"
-          SIDECAR="$APP/Contents/Resources/bin/picpress"
-          FFMPEG="$APP/Contents/Resources/app.asar.unpacked/node_modules/ffmpeg-static/ffmpeg"
-          FFPROBE="$APP/Contents/Resources/app.asar.unpacked/node_modules/ffprobe-static/bin/darwin/arm64/ffprobe"
-
-          test -x "$SIDECAR"
-          test -x "$FFMPEG"
-          test -x "$FFPROBE"
-          codesign --verify --verbose=4 "$SIDECAR"
-          find "$APP/Contents/Resources/bin" -type f -name "*.dylib" -exec codesign --verify --verbose=4 {} \;
-
-          node - <<'NODE'
-          const { spawn } = require('node:child_process')
-
-          const app = 'dist/mac-arm64/PicPress Media.app'
-          const sidecar = `${app}/Contents/Resources/bin/picpress`
-          const child = spawn(sidecar, [], {
-            env: {
-              ...process.env,
-              PORT: '54321',
-              FFMPEG_PATH: `${app}/Contents/Resources/app.asar.unpacked/node_modules/ffmpeg-static/ffmpeg`,
-              FFPROBE_PATH: `${app}/Contents/Resources/app.asar.unpacked/node_modules/ffprobe-static/bin/darwin/arm64/ffprobe`,
-            },
-            stdio: ['ignore', 'pipe', 'pipe'],
-          })
-
-          let stderr = ''
-          child.stdout.on('data', (data) => process.stdout.write(`[sidecar] ${data}`))
-          child.stderr.on('data', (data) => {
-            stderr += data.toString()
-            process.stderr.write(`[sidecar] ${data}`)
-          })
-
-          const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
-
-          ;(async () => {
-            try {
-              for (let i = 0; i < 30; i += 1) {
-                if (child.exitCode !== null) {
-                  throw new Error(`sidecar exited early with code ${child.exitCode}\n${stderr}`)
-                }
-
-                try {
-                  const res = await fetch('http://127.0.0.1:54321/api/health')
-                  if (res.ok) {
-                    child.kill('SIGTERM')
-                    return
-                  }
-                } catch {
-                  await wait(500)
-                }
-              }
-
-              throw new Error(`sidecar health check timed out\n${stderr}`)
-            } finally {
-              if (child.exitCode === null) child.kill('SIGTERM')
-            }
-          })().catch((error) => {
-            console.error(error)
-            process.exit(1)
-          })
-          NODE
-
-      - name: Upload macOS artifacts
-        uses: actions/upload-artifact@v4
+          BIN="out/PicPress Media-darwin-arm64/PicPress Media.app/Contents/Resources/bin"
+          codesign --verify --verbose=4 "$BIN/picpress"
+          find "$BIN" -name '*.dylib' -exec codesign --verify --verbose=4 {} \;
+      - uses: actions/upload-artifact@v7.0.2
         with:
           name: mac-dist
           path: |
-            dist/*.dmg
-            dist/*.zip
+            out/make/**/*.dmg
+            out/make/**/*.zip
           if-no-files-found: error
 
-  # ────────────────────────────────────────────────
-  # Windows
-  # ────────────────────────────────────────────────
   build-win:
     runs-on: windows-latest
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7.0.1
       - uses: ./.github/actions/setup-env
-
-      # Install MinGW64 + libvips via MSYS2
       - uses: msys2/setup-msys2@v2
         id: msys2
         with:
@@ -133,150 +50,74 @@ jobs:
             mingw-w64-x86_64-gcc
             mingw-w64-x86_64-pkg-config
             mingw-w64-x86_64-libvips
-
-      - name: Add MSYS2 mingw64 to PATH
+            mingw-w64-x86_64-libheif
+      - name: Configure CGO
         shell: pwsh
         run: |
           "${{ steps.msys2.outputs.msys2-location }}\mingw64\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-
-      - name: Build Go sidecar (Windows)
-        shell: pwsh
-        run: npm run build:go
-        env:
-          CGO_ENABLED: '1'
-          PKG_CONFIG_PATH: '${{ steps.msys2.outputs.msys2-location }}\mingw64\lib\pkgconfig'
-          CGO_CFLAGS: '-I${{ steps.msys2.outputs.msys2-location }}\mingw64\include'
-          CGO_LDFLAGS: '-L${{ steps.msys2.outputs.msys2-location }}\mingw64\lib'
-          CC: 'gcc'
-          CXX: 'g++'
-
-      - name: Bundle MinGW64 DLLs into sidecar-bin (Windows)
-        shell: msys2 {0}
-        run: |
-          # ldd lists all transitive DLL dependencies.
-          # Copy only DLLs from the MinGW64 bin directory (skip Windows system DLLs).
-          ldd sidecar-bin/picpress.exe \
-            | grep '/mingw64/bin/' \
-            | awk '{print $3}' \
-            | xargs -I{} cp -v {} sidecar-bin/
-
-      - name: Build Electron (Windows)
-        shell: pwsh
-        run: npm run build && npx electron-builder --config electron-builder.config.ts --win nsis --publish never
-        env:
-          CGO_ENABLED: '1'
-          PKG_CONFIG_PATH: '${{ steps.msys2.outputs.msys2-location }}\mingw64\lib\pkgconfig'
-          CGO_CFLAGS: '-I${{ steps.msys2.outputs.msys2-location }}\mingw64\include'
-          CGO_LDFLAGS: '-L${{ steps.msys2.outputs.msys2-location }}\mingw64\lib'
-          CC: 'gcc'
-          CXX: 'g++'
-
-      - name: Smoke test packaged Windows sidecar
-        shell: pwsh
-        run: |
-          $sidecar = "dist/win-unpacked/resources/bin/picpress.exe"
-          if (!(Test-Path $sidecar)) { throw "Packaged sidecar not found: $sidecar" }
-          $env:PORT = "54321"
-          $process = Start-Process -FilePath $sidecar -PassThru -NoNewWindow
-          try {
-            $ready = $false
-            1..30 | ForEach-Object {
-              if (!$ready) {
-                try { $response = Invoke-WebRequest "http://127.0.0.1:54321/api/health" -UseBasicParsing -TimeoutSec 1; if ($response.StatusCode -eq 200) { $ready = $true } } catch {}
-                if (!$ready) { Start-Sleep -Milliseconds 500 }
-              }
-            }
-            if (!$ready) { throw "Windows sidecar health check timed out" }
-          } finally { if (!$process.HasExited) { Stop-Process $process.Id -Force } }
-
-      - name: Upload Windows artifacts
-        uses: actions/upload-artifact@v4
+          "CC=gcc" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "CGO_ENABLED=1" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - run: npm run typecheck
+      - run: npm run make -- --platform=win32 --arch=x64
+      - run: npm run smoke:package
+      - uses: actions/upload-artifact@v7.0.2
         with:
           name: win-dist
-          path: dist/*.exe
+          path: |
+            out/make/**/*.exe
+            out/make/**/*.nupkg
+            out/make/**/RELEASES
           if-no-files-found: error
 
-  # ────────────────────────────────────────────────
-  # Linux
-  # ────────────────────────────────────────────────
-  build-linux:
+  build-deb:
     runs-on: ubuntu-22.04
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7.0.1
       - uses: ./.github/actions/setup-env
-
-      - name: Cache apt packages
-        uses: actions/cache@v4
-        with:
-          path: /var/cache/apt/archives
-          key: ${{ runner.os }}-apt-vips-${{ hashFiles('.github/workflows/release.yml') }}
-          restore-keys: |
-            ${{ runner.os }}-apt-vips-
-
-      - name: Install libvips and electron-builder dependencies
-        run: |
+      - run: |
           sudo apt-get update
-          sudo apt-get install -y \
-            libvips-dev \
-            fakeroot \
-            dpkg \
-            rpm \
-            libarchive-tools \
-            libnss3-dev \
-            libatk-bridge2.0-0 \
-            libgtk-3-0
-
-      - name: Build Go sidecar
-        run: npm run build:go
-        env:
-          CGO_ENABLED: '1'
-
-      - name: Build Electron (Linux)
-        run: npm run build && npx electron-builder --config electron-builder.config.ts --linux AppImage deb --publish never
-        env:
-          CGO_ENABLED: '1'
-
-      - name: Smoke test packaged Linux sidecar
-        run: |
-          SIDECAR="dist/linux-unpacked/resources/bin/picpress"
-          test -x "$SIDECAR"
-          PORT=54321 "$SIDECAR" >/tmp/picpress-sidecar.log 2>&1 &
-          PID=$!
-          trap 'kill "$PID" 2>/dev/null || true' EXIT
-          for i in $(seq 1 30); do
-            if curl --fail --silent http://127.0.0.1:54321/api/health >/dev/null; then exit 0; fi
-            sleep 0.5
-          done
-          cat /tmp/picpress-sidecar.log
-          exit 1
-
-      - name: Upload Linux artifacts
-        uses: actions/upload-artifact@v4
+          sudo apt-get install -y libvips-dev fakeroot dpkg libnss3 libatk-bridge2.0-0 libgtk-3-0
+      - run: npm run typecheck
+      - run: npm run make -- --platform=linux --arch=x64 --targets=@electron-forge/maker-deb
+      - run: npm run smoke:package
+      - uses: actions/upload-artifact@v7.0.2
         with:
-          name: linux-dist
-          path: |
-            dist/*.AppImage
-            dist/*.deb
+          name: deb-dist
+          path: out/make/**/*.deb
           if-no-files-found: error
 
-  # ────────────────────────────────────────────────
-  # Create GitHub Release
-  # ────────────────────────────────────────────────
+  # Compile against Fedora's libraries for RPM; do not ship an Ubuntu-linked
+  # CGO binary as an RPM with incompatible libvips/glib dependencies.
+  build-rpm:
+    runs-on: ubuntu-latest
+    container: fedora:44
+    timeout-minutes: 45
+    steps:
+      - run: dnf install -y git tar gzip findutils gcc gcc-c++ make vips-devel vips-heif pkgconf-pkg-config rpm-build
+      - uses: actions/checkout@v7.0.1
+      - uses: ./.github/actions/setup-env
+      - run: npm run typecheck
+      - run: npm run make -- --platform=linux --arch=x64 --targets=@electron-forge/maker-rpm
+      - run: npm run smoke:package
+      - uses: actions/upload-artifact@v7.0.2
+        with:
+          name: rpm-dist
+          path: out/make/**/*.rpm
+          if-no-files-found: error
+
   release:
-    needs: [build-mac, build-win, build-linux]
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [build-mac, build-win, build-deb, build-rpm]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
       contents: write
     steps:
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8.0.1
         with:
           path: artifacts/
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3.0.3
         with:
           name: PicPress Media ${{ github.ref_name }}
           draft: false
@@ -286,7 +127,7 @@ jobs:
             artifacts/**/*.dmg
             artifacts/**/*.zip
             artifacts/**/*.exe
-            artifacts/**/*.AppImage
+            artifacts/**/*.nupkg
+            artifacts/**/RELEASES
             artifacts/**/*.deb
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            artifacts/**/*.rpm

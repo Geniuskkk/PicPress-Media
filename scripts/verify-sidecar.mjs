@@ -1,6 +1,6 @@
 import { execFileSync } from 'child_process'
 import { existsSync, readdirSync } from 'fs'
-import { basename, dirname, join } from 'path'
+import { basename, dirname, join, relative } from 'path'
 
 function listMachODependencies(file) {
   const output = execFileSync('otool', ['-L', file], { encoding: 'utf8' })
@@ -129,16 +129,19 @@ function assertNoExternalMacLibraries(files) {
 
 function bundleMacSidecarLibraries(resourcesDir, sidecarPath) {
   const binDir = join(resourcesDir, 'bin')
+  const modules = listDylibs(binDir)
 
   try {
     execFileSync(
       'dylibbundler',
       [
-        '-od',
+        '-of',
+        '-cd',
         '-b',
         '-ns',
         '-x',
         basename(sidecarPath),
+        ...modules.flatMap((file) => ['-x', relative(binDir, file)]),
         '-d',
         'lib',
         '-p',
@@ -167,8 +170,7 @@ function bundleMacSidecarLibraries(resourcesDir, sidecarPath) {
   assertValidCodeSignatures(bundledFiles)
 }
 
-export default async function verifySidecar(context) {
-  const resourcesDir = context.packager.getResourcesDir(context.appOutDir)
+export default async function verifySidecar(resourcesDir, platform) {
   const candidates = [
     join(resourcesDir, 'bin', 'picpress'),
     join(resourcesDir, 'bin', 'picpress.exe'),
@@ -182,7 +184,7 @@ export default async function verifySidecar(context) {
     )
   }
 
-  if (context.electronPlatformName === 'darwin') {
+  if (platform === 'darwin') {
     bundleMacSidecarLibraries(resourcesDir, join(resourcesDir, 'bin', 'picpress'))
   }
 }

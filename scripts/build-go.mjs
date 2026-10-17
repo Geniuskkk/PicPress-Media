@@ -9,7 +9,7 @@
 // Output: sidecar-bin/picpress  (macOS/Linux)
 //         sidecar-bin/picpress.exe  (Windows)
 
-import { execSync } from 'child_process'
+import { execFileSync } from 'child_process'
 import { mkdirSync } from 'fs'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
@@ -43,7 +43,7 @@ if (goArch) {
 }
 
 try {
-  execSync(`go build -o ${outputPath} .`, {
+  execFileSync('go', ['build', '-o', outputPath, '.'], {
     cwd: projectRoot,
     stdio: 'inherit',
     env,

@@ -71,6 +71,12 @@ coverage/
 # ===== Tool caches =====
 .eslintcache
 .vite/
+.forge-resources/
+*.tsbuildinfo
 
 # ===== Project docs (release notes kept local only) =====
 docs/
+playwright-report/
+test-results/
+*.rpm
+*.nupkg

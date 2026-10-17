@@ -28,7 +28,8 @@
     "dist:linux": "npm run dist -- --platform=linux --arch=x64",
     "smoke:package": "node scripts/smoke-package.mjs",
     "smoke:electron": "node scripts/smoke-electron.mjs",
-    "postinstall": "node node_modules/electron/install.js"
+    "postinstall": "node node_modules/electron/install.js",
+    "test:packaging": "node --test scripts/prepare-resources.test.mjs"
   },
   "dependencies": {
     "electron-squirrel-startup": "1.0.1",

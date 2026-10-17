@@ -1,4 +1,5 @@
-import { execFileSync } from 'node:child_process'
+import { execFileSync, spawn } from 'node:child_process'
+import { createInterface } from 'node:readline'
 import { cpSync, existsSync, mkdirSync, readdirSync, rmSync } from 'node:fs'
 import { delimiter, join, resolve } from 'node:path'
 
@@ -8,30 +9,50 @@ export function assertNativeTarget(platform, arch) {
   }
 }
 
+// objdump prints export/unwind tables as well as imports; large DLLs can
+// exceed execFileSync's output buffer. Consume lines and retain only DLL names.
+export function readWindowsImports(file, command = 'objdump') {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, ['-p', file], { stdio: ['ignore', 'pipe', 'pipe'] })
+    const names = new Set()
+    const lines = createInterface({ input: child.stdout, crlfDelay: Infinity })
+    let diagnostic = ''
+    lines.on('line', (line) => {
+      const match = /DLL Name:\s*(\S+)/.exec(line)
+      if (match) names.add(match[1])
+    })
+    child.stderr.on('data', (data) => { diagnostic = (diagnostic + data).slice(-8192) })
+    child.once('error', reject)
+    child.once('close', (code, signal) => {
+      lines.close()
+      if (code !== 0) reject(new Error(`objdump failed for ${file} (${signal ?? code}): ${diagnostic.trim()}`))
+      else resolve([...names])
+    })
+  })
+}
+
 // Resolve MinGW DLLs transitively, excluding Windows system DLLs. objdump is
 // installed with the MinGW toolchain used to compile the CGO sidecar.
-function copyWindowsLibraries(binaries, output) {
+async function copyWindowsLibraries(binaries, output) {
   const directories = (process.env.PATH ?? '').split(delimiter)
   const seen = new Set()
-  const visit = (file) => {
-    const listing = execFileSync('objdump', ['-p', file], { encoding: 'utf8' })
-    for (const match of listing.matchAll(/DLL Name:\s*(\S+)/g)) {
-      const name = match[1]
+  const visit = async (file) => {
+    for (const name of await readWindowsImports(file)) {
       if (seen.has(name.toLowerCase())) continue
       seen.add(name.toLowerCase())
       const source = directories.map((dir) => join(dir, name)).find((p) => existsSync(p) && !/[\\/]Windows[\\/]/i.test(p))
       if (!source) {
         const system = join(process.env.SystemRoot ?? 'C:\\Windows', 'System32', name)
         if (/^(api-ms-win-|ext-ms-win-)/i.test(name) || existsSync(system)) continue
-        throw new Error(`Missing DLL ${name} required by ${file}. Check the MinGW64 PATH.`)
+        throw new Error(`Missing DLL ${name} required by ${file}. Check the UCRT64 PATH.`)
       }
       cpSync(source, join(output, name))
-      visit(source)
+      await visit(source)
     }
   }
-  for (const binary of binaries) visit(binary)
+  for (const binary of binaries) await visit(binary)
   if (!readdirSync(output).some((name) => /vips.*\.dll$/i.test(name))) {
-    throw new Error('libvips DLL was not found on PATH. Add the MinGW64 bin directory before packaging.')
+    throw new Error('libvips DLL was not found on PATH. Add the UCRT64 bin directory before packaging.')
   }
 }
 
@@ -75,5 +96,5 @@ export async function prepareResources(platform, arch) {
   const binary = resolve('sidecar-bin', name)
   cpSync(binary, join(output, name))
   const modules = platform === 'linux' ? [] : copyImageModules(output)
-  if (platform === 'win32') copyWindowsLibraries([binary, ...modules], output)
+  if (platform === 'win32') await copyWindowsLibraries([binary, ...modules], output)
 }

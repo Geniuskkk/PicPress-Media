@@ -47,6 +47,8 @@ const config: ForgeConfig = {
       depends: ['libvips42', 'libgtk-3-0', 'libnss3', 'libasound2', 'libgbm1', 'libxss1', 'libxtst6', 'xdg-utils'],
     } }),
     new MakerRpm({ options: {
+      // Supported by electron-installer-redhat; not yet declared in Forge's types.
+      ...{ specTemplate: resolve('build/rpm.spec.ejs') },
       bin: 'picpress-media', icon: resolve('build/icons/512x512.png'), categories: ['Graphics'],
       requires: ['vips', 'vips-heif', 'gtk3', 'nss', 'alsa-lib', 'mesa-libgbm', 'libXScrnSaver', 'libXtst', 'xdg-utils'],
     } }),

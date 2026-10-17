@@ -58,11 +58,18 @@ Windows 旧版 NSIS 安装应先卸载；Squirrel 不会接管原安装目录。
 
 CI 在版本标签上构建并发布，手动触发只生成构建产物。设置 `APPLE_SIGNING_IDENTITY` 可启用 macOS 身份签名；本次本地构建未配置开发者证书和公证。
 
+## 发布构建兼容性修复
+
+- Windows 的 `objdump -p` 会输出大量导出和展开表；DLL 依赖扫描改为流式逐行读取，避免同步调用默认缓冲区的 `ENOBUFS`，并在工具执行失败时保留诊断信息。
+- Fedora 44 的 RPM 会进入独立构建子目录。使用 `build/rpm.spec.ejs` 从 `%{_topdir}/BUILD/usr/.` 复制暂存文件，避免上游模板的相对路径 `usr/*` 找不到文件。模板保留上游 MIT 许可。
+- `npm run test:packaging` 验证超过默认缓冲区的大输出、分段行与子进程错误；CI 安装依赖后运行。
+
 ## 验证命令
 
 ```bash
 npm ci
 npm run typecheck
+npm run test:packaging
 npm run build:web
 go test ./...
 npx playwright install chromium

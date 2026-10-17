@@ -1,5 +1,5 @@
 <div align="center">
-<img src="frontend/src/assets/icon.png" width="96" alt="PicPress Media Logo" />
+<img src="frontend/src/assets/icon.png?v=84f09d88" width="96" alt="PicPress Media Logo" />
 
 # PicPress Media
 

@@ -61,8 +61,9 @@ CI 在版本标签上构建并发布，手动触发只生成构建产物。设�
 ## 发布构建兼容性修复
 
 - Windows 的 `objdump -p` 会输出大量导出和展开表；DLL 依赖扫描改为流式逐行读取，避免同步调用默认缓冲区的 `ENOBUFS`，并在工具执行失败时保留诊断信息。
+- CI 的 Linux `--targets` 使用已配置实例名 `deb` / `rpm`。Forge 按实例的 `name` 匹配；使用 npm 包名会创建默认 Maker，丢失图标、运行依赖和自定义 spec 配置。
 - Fedora 44 的 RPM 会进入独立构建子目录。使用 `build/rpm.spec.ejs` 从 `%{_topdir}/BUILD/usr/.` 复制暂存文件，避免上游模板的相对路径 `usr/*` 找不到文件。模板保留上游 MIT 许可。
-- `npm run test:packaging` 验证超过默认缓冲区的大输出、分段行与子进程错误；CI 安装依赖后运行。
+- `npm run test:packaging` 验证超过默认缓冲区的大输出、分段行与子进程错误，并通过 Forge 实际目标解析检查 CI 参数保留 Maker 配置；CI 安装依赖后运行。
 
 ## 验证命令
 

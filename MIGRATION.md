@@ -48,11 +48,11 @@ Tailwind 4 改用官方 Vite 插件、CSS 主题和自定义 dark 变体。Cropp
 | 平台 | 格式 | 构建环境 |
 | --- | --- | --- |
 | macOS arm64 | DMG + ZIP | macos-14 |
-| Windows x64 | Squirrel Setup.exe、nupkg、RELEASES | windows-latest + MSYS2 MinGW64 |
+| Windows x64 | Squirrel Setup.exe、nupkg、RELEASES | windows-latest + MSYS2 UCRT64 |
 | Debian / Ubuntu x64 | DEB | ubuntu-22.04 |
 | Fedora x64 | RPM | Fedora 44 容器 |
 
-Windows 旧版 NSIS 安装应先卸载；Squirrel 不会接管原安装目录。Linux 不再生成 AppImage，安装时由包管理器解决系统库依赖。RPM 在 Fedora 内编译，避免使用链接 Ubuntu 库的 Go 二进制。
+Windows 旧版 NSIS 安装应先卸载；Squirrel 不会接管原安装目录。Linux 不再生成 AppImage，安装时由包管理器解决系统库依赖。RPM 在 Fedora 内编译，避免使用链接 Ubuntu 库的 Go 二进制。容器中仅将当前 GITHUB_WORKSPACE 加入 Git safe.directory，保证 Go 可以读取 VCS 状态；Windows 使用 UCRT64 工具链及对应的 libvips/libheif 包。
 
 由于 CGO、libvips 和 ffmpeg 的原生依赖，构建脚本拒绝跨平台或跨架构打包。Intel Mac 需在 Intel 环境执行 `npm run dist:mac:x64`。
 
@@ -76,7 +76,7 @@ npm run smoke:electron
 
 - Electron/config 和 Vue 类型检查；Go 包编译检查（当前 Go 包没有单元测试）。
 - 最终锁文件的干净 `npm ci` 和 Forge 开发启动。
-- 10 项浏览器回归：原图分辨率、顺时针旋转、水平和垂直翻转、旋转后翻转、比例与照片尺寸预设/深色模式/导航、EXIF 方向、大图拖入/窗口缩放后保留裁剪、竖图与小图居中。
+- 13 项浏览器回归：原图分辨率、顺时针旋转、水平和垂直翻转、旋转后翻转、比例与照片尺寸预设/深色模式/导航、EXIF 方向、大图拖入/窗口缩放后保留裁剪、竖图与小图居中、贴边手柄拖动、手动输入尺寸及窗口缩放后保持。
 - 打包应用的健康检查、PNG/JPG/WebP/AVIF 图片缩放、MP4/H.264 和 WebM/VP9 编码。
 - 打包 Electron 的 file:// 加载、preload 端口注入、真实图片处理、哈希路由刷新、macOS 隐藏/恢复窗口和退出后 Go 服务关闭。
 - macOS 动态库依赖路径和 sidecar/动态库签名检查由打包钩子执行。

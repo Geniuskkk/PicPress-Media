@@ -18,7 +18,7 @@ const config: ForgeConfig = {
     icon: resolve('build/icon'),
     // Vite bundles the renderer but the main process keeps these npm packages
     // external. Include node_modules, then let Packager prune devDependencies.
-    ignore: (path) => !!path && !/^\/(?:\.vite(?:\/|$)|node_modules(?:\/|$)|package\.json$)/.test(path),
+    ignore: (path) => !!path && !/^\/(?:\.vite(?:\/|$)|node_modules(?:\/|$)|package\.json$|LICENSE$)/.test(path),
     asar: { unpackDir: 'node_modules/{ffmpeg-static,ffprobe-static}' },
     extraResource: [resolve('.forge-resources/bin'), resolve('build/icon.icns'), resolve('build/icon.ico'), resolve('build/icons')],
     // Runs after resources are copied and BEFORE Packager signs the app.

@@ -124,7 +124,8 @@ jobs:
           name: PicPress Media ${{ github.ref_name }}
           draft: false
           prerelease: false
-          generate_release_notes: true
+          # Release descriptions are maintained in release-notes/ and pasted manually.
+          generate_release_notes: false
           files: |
             artifacts/**/*.dmg
             artifacts/**/*.zip

@@ -29,7 +29,8 @@
     "smoke:package": "node scripts/smoke-package.mjs",
     "smoke:electron": "node scripts/smoke-electron.mjs",
     "postinstall": "node node_modules/electron/install.js",
-    "test:packaging": "node --test scripts/prepare-resources.test.mjs scripts/maker-config.test.mjs"
+    "test:packaging": "node --test scripts/prepare-resources.test.mjs scripts/maker-config.test.mjs",
+    "build:icons": "node scripts/build-icons.mjs"
   },
   "dependencies": {
     "electron-squirrel-startup": "1.0.1",

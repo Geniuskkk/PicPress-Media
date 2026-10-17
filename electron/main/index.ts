@@ -11,9 +11,9 @@ function getAppIcon(): Electron.NativeImage {
   if (app.isPackaged) {
     if (process.platform === 'win32') return nativeImage.createFromPath(join(projectRoot, 'icon.ico'))
     if (process.platform === 'linux') return nativeImage.createFromPath(join(projectRoot, 'icons', '512x512.png'))
-    return nativeImage.createFromPath(join(projectRoot, 'icon.icns'))
+    return nativeImage.createFromPath(join(projectRoot, 'icons', '1024x1024.png'))
   }
-  // Dev: use 1024 PNG for all platforms (icns not loaded by Electron outside a bundle)
+  // nativeImage supports PNG across platforms; ICNS is only a packaging asset.
   return nativeImage.createFromPath(join(projectRoot, 'build', 'icons', '1024x1024.png'))
 }
 

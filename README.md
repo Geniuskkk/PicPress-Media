@@ -28,11 +28,7 @@ PicPress Media 是一款开源的跨平台桌面应用，基于 **Electron + Vue
 - 所有处理均在本地完成，文件不会上传到外部服务
 - 支持 macOS、Windows、Linux 三平台
 
-### v2.2.0 更新
-
-- 迁移至 Electron Forge 8，升级 Electron、Vue 和构建依赖，统一根目录依赖管理。
-- 升级 CropperJS 2，按原图分辨率导出裁剪结果，修复大图居中、旋转翻转及窗口缩放后的裁剪保持。宽高输入确认后联动裁剪框，贴边裁剪框也可拖动手柄调整。
-- Windows 改用 Squirrel 安装包；Linux 提供 DEB/RPM；完善 HEIF/AVIF 插件打包与发布验证。
+版本更新说明见 [版本更新日志](release-notes/README.md)。
 
 ### 功能特性
 
@@ -201,6 +197,8 @@ npm run smoke:electron
 
 `package` 输出应用目录，`make` 输出 `out/make/` 下的安装包。独立浏览器开发可使用 `go run .` 和 `npm run dev:web`。
 
+应用图标资源已提交到仓库。修改 `build/icon-source.png` 后，安装 ImageMagick 并执行 `npm run build:icons`，统一生成 PNG、ICO、ICNS 和前端图标。普通构建无需 ImageMagick。
+
 TypeScript 暂固定 6.0.3：vue-tsc 3.3.13 不能调用 TypeScript 7 的内部编译器入口。迁移细节和验证范围见 [MIGRATION.md](MIGRATION.md)。
 
 ### 参与贡献
@@ -221,11 +219,7 @@ TypeScript 暂固定 6.0.3：vue-tsc 3.3.13 不能调用 TypeScript 7 的内部�
 
 PicPress Media is an open-source cross-platform desktop application built with **Electron + Vue 3 + Go**. It handles image processing and single-video compression entirely on your machine — nothing is uploaded to external services.
 
-### v2.2.0 Changes
-
-- Migrated to Electron Forge 8, updated Electron/Vue and build dependencies, and consolidated dependencies at the repository root.
-- Upgraded to CropperJS 2 with source-resolution crop export and fixes for large-image centering, transforms, and crop preservation during window resizing. Confirming custom pixel dimensions updates the crop; resize handles remain usable at canvas edges.
-- Switched Windows installers to Squirrel, provided DEB/RPM packages for Linux, and improved HEIF/AVIF plugin packaging and release checks.
+For version-specific changes, see [Release notes](release-notes/README.md).
 
 ### Features
 
@@ -361,6 +355,10 @@ npm run dist:linux  # DEB + RPM
 ```
 
 > macOS and Windows packages must be built on their respective OS due to CGO (libvips). The current CI release publishes an Apple Silicon arm64 macOS build, and Intel Macs require a separate x64 build on an Intel runner. macOS release builds also need `dylibbundler` to bundle libvips dylibs into the app. CI uses GitHub Actions with separate jobs per platform.
+
+### App icons
+
+Icon assets are committed to the repository. After updating `build/icon-source.png`, install ImageMagick and run `npm run build:icons` to regenerate PNG, ICO, ICNS, and frontend icons. Normal builds do not require ImageMagick.
 
 ### Contributing
 

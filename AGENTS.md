@@ -88,3 +88,11 @@ npm run smoke:electron       # packaged desktop UI/lifecycle test (requires disp
 
 - **Upgrade constraint**: TypeScript is pinned to 6.0.3 because vue-tsc 3.3.13 cannot load the TypeScript 7 compiler internals. Do not bypass this failure with skipLibCheck or legacy-peer-deps.
 - **Batch UI**: calls the single-image API sequentially and creates ZIPs with JSZip; `/api/batch` is a separate server-side API.
+
+## Release documentation policy
+
+- Keep README.md focused on product usage, installation, and development. Never add per-version changes or release history to README.md.
+- Store release descriptions in `release-notes/<version>.zh-CN.md` and `release-notes/<version>.en.md`. Both Markdown versions are required and must describe the same changes.
+- These files provide copy-ready GitHub Release body text. The user manually copies them into the Release after publishing; do not automatically publish or overwrite release descriptions unless explicitly requested.
+- Update the release-notes index for each release. Keep version-specific details out of the root README.
+- Do not commit `build/ICON-DESIGN.md`; this design note was intentionally removed.

@@ -80,3 +80,6 @@ playwright-report/
 test-results/
 *.rpm
 *.nupkg
+
+# Local icon design notes
+/build/ICON-DESIGN.md

@@ -62,11 +62,11 @@
             <div class="mt-2 flex gap-2">
               <div class="flex-1">
                 <label class="text-xs text-gray-500 dark:text-gray-400">宽 (px)</label>
-                <input v-model.number="outputWidth" type="number" min="1" class="mt-0.5 w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 focus:outline-hidden focus:border-blue-500" />
+                <input v-model.number="outputWidth" @change="applyCustomSize('width')" aria-label="宽 (px)" type="number" min="1" class="mt-0.5 w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 focus:outline-hidden focus:border-blue-500" />
               </div>
               <div class="flex-1">
                 <label class="text-xs text-gray-500 dark:text-gray-400">高 (px)</label>
-                <input v-model.number="outputHeight" type="number" min="1" class="mt-0.5 w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 focus:outline-hidden focus:border-blue-500" />
+                <input v-model.number="outputHeight" @change="applyCustomSize('height')" aria-label="高 (px)" type="number" min="1" class="mt-0.5 w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 focus:outline-hidden focus:border-blue-500" />
               </div>
             </div>
           </section>
@@ -313,9 +313,38 @@ function setRatio(ratio: number | undefined) {
   fitSelection()
 }
 
+function applyCustomSize(changed: 'width' | 'height') {
+  const selection = cropper?.getCropperSelection()
+  const bounds = imageBounds()
+  if (!selection || !bounds || !cropperReady.value) return
+  selectedSizePresetId.value = ''
+  let width = Math.max(1, Math.round(Number(outputWidth.value) || 1))
+  let height = Math.max(1, Math.round(Number(outputHeight.value) || 1))
+  if (currentRatio.value) {
+    if (changed === 'width') height = Math.max(1, Math.round(width / currentRatio.value))
+    else width = Math.max(1, Math.round(height * currentRatio.value))
+  }
+  // Requested pixels define the crop at source resolution. If upscaling is
+  // requested, keep that output size and fit a crop with the same proportions.
+  const scale = imageScale()
+  const fit = Math.min(1, bounds.width / (width * scale), bounds.height / (height * scale))
+  const cropWidth = width * scale * fit
+  const cropHeight = height * scale * fit
+  const x = Math.max(bounds.x, Math.min(selection.x + (selection.width - cropWidth) / 2,
+    bounds.x + bounds.width - cropWidth))
+  const y = Math.max(bounds.y, Math.min(selection.y + (selection.height - cropHeight) / 2,
+    bounds.y + bounds.height - cropHeight))
+  selection.$change(x, y, cropWidth, cropHeight, NaN)
+  outputWidth.value = width
+  outputHeight.value = height
+}
+
 function applySizePreset(presetId: string) {
   const preset = findPhotoSizePreset(presetId)
-  if (!preset) return
+  if (!preset) {
+    setRatio(undefined)
+    return
+  }
 
   outputWidth.value = preset.widthPx
   outputHeight.value = preset.heightPx

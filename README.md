@@ -31,7 +31,7 @@ PicPress Media 是一款开源的跨平台桌面应用，基于 **Electron + Vue
 ### v2.2.0 更新
 
 - 迁移至 Electron Forge 8，升级 Electron、Vue 和构建依赖，统一根目录依赖管理。
-- 升级 CropperJS 2，按原图分辨率导出裁剪结果，修复大图居中、旋转翻转及窗口缩放后的裁剪保持。
+- 升级 CropperJS 2，按原图分辨率导出裁剪结果，修复大图居中、旋转翻转及窗口缩放后的裁剪保持。宽高输入确认后联动裁剪框，贴边裁剪框也可拖动手柄调整。
 - Windows 改用 Squirrel 安装包；Linux 提供 DEB/RPM；完善 HEIF/AVIF 插件打包与发布验证。
 
 ### 功能特性
@@ -224,7 +224,7 @@ PicPress Media is an open-source cross-platform desktop application built with *
 ### v2.2.0 Changes
 
 - Migrated to Electron Forge 8, updated Electron/Vue and build dependencies, and consolidated dependencies at the repository root.
-- Upgraded to CropperJS 2 with source-resolution crop export and fixes for large-image centering, transforms, and crop preservation during window resizing.
+- Upgraded to CropperJS 2 with source-resolution crop export and fixes for large-image centering, transforms, and crop preservation during window resizing. Confirming custom pixel dimensions updates the crop; resize handles remain usable at canvas edges.
 - Switched Windows installers to Squirrel, provided DEB/RPM packages for Linux, and improved HEIF/AVIF plugin packaging and release checks.
 
 ### Features

@@ -151,3 +151,32 @@ test('EXIF orientation preserves portrait dimensions and pixel orientation', asy
     expect(Math.abs(channel - expected[i]![j]!)).toBeLessThanOrEqual(3)
   }))
 })
+
+for (const size of [{ width: 160, height: 90 }, { width: 400, height: 800 }]) {
+  test(`can resize full-image crop with pointer for ${size.width}x${size.height}`, async ({ page }) => {
+    await openImage(page, false, size)
+    const handle = page.locator('cropper-selection cropper-handle[action="se-resize"]')
+    const bounds = await handle.boundingBox()
+    expect(bounds).not.toBeNull()
+    await page.mouse.move(bounds!.x + bounds!.width / 2, bounds!.y + bounds!.height / 2)
+    await page.mouse.down()
+    await page.mouse.move(bounds!.x - 80, bounds!.y - 60, { steps: 10 })
+    await page.mouse.up()
+    const output = await exportedPixels(page)
+    expect(output.width).toBeLessThan(size.width)
+    expect(output.height).toBeLessThan(size.height)
+  })
+}
+
+test('custom pixel dimensions resize the crop and retain source pixels after viewport resize', async ({ page }) => {
+  await openImage(page)
+  await page.getByRole('spinbutton', { name: '宽 (px)' }).fill('100')
+  await page.getByRole('spinbutton', { name: '高 (px)' }).fill('100')
+  await page.getByRole('spinbutton', { name: '高 (px)' }).blur()
+  let result = await exportedPixels(page)
+  expect([result.width, result.height]).toEqual([100, 100])
+  await page.setViewportSize({ width: 1000, height: 650 })
+  await expectImageFits(page)
+  result = await exportedPixels(page)
+  expect([result.width, result.height]).toEqual([100, 100])
+})

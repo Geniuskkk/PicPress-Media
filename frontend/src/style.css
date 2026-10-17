@@ -21,3 +21,17 @@
 }
 
 cropper-canvas { width: 100%; height: 100%; }
+
+/* Keep resize targets inside the selection so canvas-edge crops stay usable. */
+cropper-handle[action="n-resize"],
+cropper-handle[action="ne-resize"],
+cropper-handle[action="nw-resize"] { top: 0; }
+cropper-handle[action="s-resize"],
+cropper-handle[action="se-resize"],
+cropper-handle[action="sw-resize"] { bottom: 0; }
+cropper-handle[action="e-resize"],
+cropper-handle[action="ne-resize"],
+cropper-handle[action="se-resize"] { right: 0; }
+cropper-handle[action="w-resize"],
+cropper-handle[action="nw-resize"],
+cropper-handle[action="sw-resize"] { left: 0; }
